@@ -15,8 +15,10 @@ namespace Backend.Models
         public bool EsAdministradorTiendaCry { get; set; } = false;
         public bool DebeCambiarContrasena { get; set; } = false;
         public required int IdEstadoUsuario { get; set; }
-        // Le asigné null acá porque en si va a ser una propiedad de navegación. No necesito que después, si es que lo instancio,
-        // le asigne el EstadoUsuario.
         public EstadoUsuario EstadoUsuario { get; set; } = null!;
+
+        public Socio? Socio { get; set; }
+        public ICollection<TokenEmail> TokensEmail { get; set; } = new List<TokenEmail>();
+        public ICollection<UsuarioTienda> UsuariosTienda { get; set; } = new List<UsuarioTienda>();
     }
 }

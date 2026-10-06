@@ -43,7 +43,8 @@ namespace Backend.Data.Configuraciones
 
             builder.HasOne(u => u.EstadoUsuario)
                 .WithMany(eu => eu.Usuarios)
-                .HasForeignKey(u => u.IdEstadoUsuario);
+                .HasForeignKey(u => u.IdEstadoUsuario)
+                .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasIndex(u => u.NomUsuario)
                 .IsUnique();
