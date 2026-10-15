@@ -1,7 +1,5 @@
 <Solution>
-  <Project Path="Backend/Backend.csproj" />
-  <Project Path="Mobile/Mobile.csproj">
-    <Deploy Solution="Debug|*" />
-  </Project>
-  <Project Path="Web/Web.csproj" />
+  <Project Path="TiendaCry.Backend/TiendaCry.Backend.csproj" />
+  <Project Path="TiendaCry.Mobile/TiendaCry.Mobile.csproj" />
+  <Project Path="TiendaCry.Web/TiendaCry.Web.csproj" />
 </Solution>
