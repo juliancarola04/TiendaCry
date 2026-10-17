@@ -1,4 +1,11 @@
-
+using TiendaCry.Backend.Implementacion;
+using TiendaCry.Backend.Repositories;
+using TiendaCry.Backend.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using TiendaCry.Backend.Options;
 using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Data;
 using TiendaCry.Backend.Data.Seeder;
@@ -10,6 +17,60 @@ namespace TiendaCry.Backend
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.AddSingleton<ITokenService, TokenService>();
+            builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
+            builder.Services.AddScoped<IRegisterRepository, RegisterRepositoryPsqlEF>();
+            builder.Services.AddScoped<LoginService>();
+            builder.Services.AddScoped<RegisterService>();
+            builder.Services.AddScoped<UsuarioService>();
+
+            builder.Services.AddOptions<JwtSettings>()
+                .BindConfiguration("JwtSettings");
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer();
+
+            builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+                .Configure<IOptions<JwtSettings>>((options, jwtSettingsOptions) =>
+                {
+                    var jwtSettings = jwtSettingsOptions.Value;
+
+                    options.MapInboundClaims = false;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = jwtSettings.Issuer,
+                        ValidAudience = jwtSettings.Audience,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+                        ClockSkew = TimeSpan.Zero
+                    };
+
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnTokenValidated = async context =>
+                        {
+                            var sub = context.Principal?
+                                .FindFirst("sub")?.Value;
+
+                            int idUsuario = Convert.ToInt32(sub);
+
+                            var usuarioRepository = context.HttpContext
+                                .RequestServices
+                                .GetRequiredService<IUsuarioRepository>();
+
+                            // Reocrdar que esto lo puse porque quizá el usuario se da de baja y tenemos que evitar que pueda seguir haciendo cosas.
+                            // Este evento se va a validar desp de que el backend haga las validaciones estándar sobre el token.
+                            if (!await usuarioRepository.EstaActivo(idUsuario))
+                            {
+                                context.Fail("La cuenta no está habilitada.");
+                            }
+                        }
+                    };
+                });
 
             // Add services to the container.
             builder.Services.AddDbContext<DataContext>(options => 
@@ -26,6 +87,7 @@ namespace TiendaCry.Backend
                 AllowAutoRedirect = true
             });
 
+            builder.Services.AddScoped<SeederEstados>();
             builder.Services.AddScoped<SeederUbicacion>();
 
             builder.Services.AddControllers();
@@ -36,10 +98,15 @@ namespace TiendaCry.Backend
 
             using (var scope = app.Services.CreateScope())
             {
-                var seeder = scope.ServiceProvider
+                var seederEstados = scope.ServiceProvider
+                    .GetRequiredService<SeederEstados>();
+
+                await seederEstados.SeedAsync();
+
+                var seederUbicacion = scope.ServiceProvider
                     .GetRequiredService<SeederUbicacion>();
 
-                await seeder.SeedAsync();
+                await seederUbicacion.SeedAsync();
             }
 
             // Configure the HTTP request pipeline.
@@ -50,6 +117,7 @@ namespace TiendaCry.Backend
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
 

@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="TiendaCry.Backend/TiendaCry.Backend.csproj" />
   <Project Path="TiendaCry.Mobile/TiendaCry.Mobile.csproj" />
+  <Project Path="TiendaCry.Shared/TiendaCry.Shared.csproj" />
   <Project Path="TiendaCry.Web/TiendaCry.Web.csproj" />
 </Solution>
