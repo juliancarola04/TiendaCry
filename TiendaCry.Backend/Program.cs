@@ -24,6 +24,12 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<LoginService>();
             builder.Services.AddScoped<RegisterService>();
             builder.Services.AddScoped<UsuarioService>();
+            builder.Services.AddScoped<EmailService>();
+            builder.Services.AddScoped<ITokenEmailRepository, TokenEmailRepositoryPsqlEF>();
+            builder.Services.AddScoped<VerificacionEmailService>();
+
+            builder.Services.AddOptions<EmailSettings>()
+                .BindConfiguration("EmailSettings");
 
             builder.Services.AddOptions<JwtSettings>()
                 .BindConfiguration("JwtSettings");
@@ -88,6 +94,7 @@ namespace TiendaCry.Backend
             });
 
             builder.Services.AddScoped<SeederEstados>();
+            builder.Services.AddScoped<SeederTiposTokenEmail>();
             builder.Services.AddScoped<SeederUbicacion>();
 
             builder.Services.AddControllers();
@@ -102,6 +109,11 @@ namespace TiendaCry.Backend
                     .GetRequiredService<SeederEstados>();
 
                 await seederEstados.SeedAsync();
+
+                var seederTiposTokenEmail = scope.ServiceProvider
+                    .GetRequiredService<SeederTiposTokenEmail>();
+
+                await seederTiposTokenEmail.SeedAsync();
 
                 var seederUbicacion = scope.ServiceProvider
                     .GetRequiredService<SeederUbicacion>();

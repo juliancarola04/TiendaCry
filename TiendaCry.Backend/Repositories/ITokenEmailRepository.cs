@@ -1,0 +1,11 @@
+using TiendaCry.Backend.Models;
+
+namespace TiendaCry.Backend.Repositories
+{
+    public interface ITokenEmailRepository
+    {
+        Task<int?> ObtenerIdTipoPorNombre(string nombre);
+        Task GuardarAsync(TokenEmail token);
+        Task<bool> ConfirmarEmailAsync(string codigo, DateTime ahora);
+    }
+}
