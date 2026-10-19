@@ -17,7 +17,7 @@ namespace TiendaCry.Backend.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -415,6 +415,42 @@ namespace TiendaCry.Backend.Migrations
                     b.ToTable("RolesTienda", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaCry.Backend.Models.SesionUsuario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaRevocacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaVencimiento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IdUsuario")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RefreshToken")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdUsuario");
+
+                    b.HasIndex("RefreshToken")
+                        .IsUnique();
+
+                    b.ToTable("SesionesUsuario", (string)null);
+                });
+
             modelBuilder.Entity("TiendaCry.Backend.Models.Socio", b =>
                 {
                     b.Property<int>("Id")
@@ -794,6 +830,17 @@ namespace TiendaCry.Backend.Migrations
                     b.Navigation("EstadoPromocion");
 
                     b.Navigation("Tienda");
+                });
+
+            modelBuilder.Entity("TiendaCry.Backend.Models.SesionUsuario", b =>
+                {
+                    b.HasOne("TiendaCry.Backend.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("TiendaCry.Backend.Models.Socio", b =>

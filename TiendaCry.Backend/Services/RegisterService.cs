@@ -93,7 +93,7 @@ namespace TiendaCry.Backend.Services
 
             await _repo.Registrarse(usuario);
 
-            var (token, _) = _tokenService.CrearToken(usuario);
+            var token = _tokenService.CrearToken(usuario);
 
             return new RegisterResponse(token);
         }

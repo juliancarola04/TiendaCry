@@ -14,6 +14,7 @@ namespace TiendaCry.Backend.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfiguration(new UsuarioConfiguracion());
+            modelBuilder.ApplyConfiguration(new SesionUsuarioConfiguracion());
             modelBuilder.ApplyConfiguration(new EstadoUsuarioConfiguracion());
             modelBuilder.ApplyConfiguration(new ProvinciaConfiguracion());
             modelBuilder.ApplyConfiguration(new CiudadConfiguracion());
@@ -40,6 +41,7 @@ namespace TiendaCry.Backend.Data
         }
 
         public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<SesionUsuario> SesionesUsuario { get; set; }
         public DbSet<EstadoUsuario> EstadosUsuario{ get; set; }
         public DbSet<Provincia> Provincias { get; set; }
         public DbSet<Ciudad> Ciudades { get; set; }

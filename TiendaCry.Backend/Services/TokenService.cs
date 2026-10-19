@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Options;
@@ -14,8 +15,7 @@ namespace TiendaCry.Backend.Services
     {
         private readonly JwtSettings _settings = jwtSettings.Value;
 
-        public (string token, DateTime expiracion) CrearToken(
-            Usuario usuario)
+        public string CrearToken(Usuario usuario)
         {
             var expiracion = DateTime.UtcNow
                 .AddMinutes(_settings.ExpiryMinutes);
@@ -44,7 +44,18 @@ namespace TiendaCry.Backend.Services
             var handler = new JsonWebTokenHandler();
             var token = handler.CreateToken(descriptor);
 
-            return (token, expiracion);
+            return token;
+        }
+
+        public string CrearRefreshToken()
+        {
+            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        }
+
+        public string CalcularHash(string token)
+        {
+            var bytes = Encoding.UTF8.GetBytes(token);
+            return Convert.ToHexString(SHA256.HashData(bytes));
         }
     }
 }

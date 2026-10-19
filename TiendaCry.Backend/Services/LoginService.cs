@@ -1,4 +1,5 @@
 using TiendaCry.Backend.Excepciones;
+using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Repositories;
 using TiendaCry.Shared.DTO.Auth.Request;
 using TiendaCry.Shared.DTO.Auth.Response;
@@ -9,13 +10,13 @@ namespace TiendaCry.Backend.Services
     {
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly ITokenService _tokenService;
+        private readonly ISesionUsuarioRepository _sesionRepository;
 
-        public LoginService(
-            IUsuarioRepository usuarioRepository,
-            ITokenService tokenService)
+        public LoginService(IUsuarioRepository usuarioRepository, ITokenService tokenService, ISesionUsuarioRepository sesionRepository)
         {
             _usuarioRepository = usuarioRepository;
             _tokenService = tokenService;
+            _sesionRepository = sesionRepository;
         }
 
         public async Task<LoginResponse> Login(LoginRequest request)
@@ -45,9 +46,21 @@ namespace TiendaCry.Backend.Services
                 throw new CredencialesInvalidasException();
             }
 
-            var (token, _) = _tokenService.CrearToken(usuario);
+            var token = _tokenService.CrearToken(usuario);
+            var refreshToken = _tokenService.CrearRefreshToken();
+            var ahora = DateTime.UtcNow;
 
-            return new LoginResponse(token);
+            var sesion = new SesionUsuario
+            {
+                IdUsuario = usuario.Id,
+                RefreshToken = _tokenService.CalcularHash(refreshToken),
+                FechaCreacion = ahora,
+                FechaVencimiento = ahora.AddDays(30)
+            };
+
+            await _sesionRepository.Crear(sesion);
+
+            return new LoginResponse(token, refreshToken, sesion.FechaVencimiento);
         }
     }
 }

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 using TiendaCry.Backend.Excepciones;
 using TiendaCry.Backend.Services;
 using TiendaCry.Shared.DTO.Auth.Request;
@@ -15,17 +17,142 @@ namespace TiendaCry.Backend.Controllers
         private readonly RegisterService _registerService;
         private readonly UsuarioService _usuarioService;
         private readonly VerificacionEmailService _verificacionEmailService;
+        private readonly SesionService _sesionService;
 
         public AutorizacionController(
             LoginService loginService,
             RegisterService registerService,
             UsuarioService usuarioService,
-            VerificacionEmailService verificacionEmailService)
+            VerificacionEmailService verificacionEmailService,
+            SesionService sesionService)
         {
             _loginService = loginService;
             _registerService = registerService;
             _usuarioService = usuarioService;
             _verificacionEmailService = verificacionEmailService;
+            _sesionService = sesionService;
+        }
+
+        [HttpGet("web/csrf")]
+        [AllowAnonymous]
+        public IActionResult ObtenerTokenCsrf([FromServices] IAntiforgery antiforgery)
+        {
+            var tokens = antiforgery.GetAndStoreTokens(HttpContext);
+
+            return Ok(new { token = tokens.RequestToken });
+        }
+
+        [HttpPost("web/login")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LoginWeb(LoginRequest request)
+        {
+            try
+            {
+                var response = await _loginService.Login(request);
+
+                GuardarCookies(response);
+
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("web/refresh")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RenovarWeb()
+        {
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                EliminarCookies();
+                return Unauthorized("No hay una sesión disponible para renovar.");
+            }
+
+            try
+            {
+                var response = await _sesionService.Renovar(refreshToken);
+
+                GuardarCookies(response);
+
+                return NoContent();
+            }
+            catch (SesionInvalidaException e)
+            {
+                EliminarCookies();
+                return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("web/logout")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CerrarSesionWeb()
+        {
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(refreshToken))
+                {
+                    await _sesionService.Cerrar(refreshToken);
+                }
+
+                EliminarCookies();
+
+                return NoContent();
+            }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CerrarSesion(LogoutRequest request)
+        {
+            try
+            {
+                await _sesionService.Cerrar(request.RefreshToken);
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<ActionResult<LoginResponse>> Renovar(RefreshRequest request)
+        {
+            try
+            {
+                var response = await _sesionService.Renovar(request.RefreshToken);
+                return Ok(response);
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
+            }
         }
 
         [HttpPost("confirmar-email")]
@@ -126,6 +253,47 @@ namespace TiendaCry.Backend.Controllers
             {
                 return Unauthorized(e.Message);
             }
+        }
+        private void GuardarCookies(LoginResponse response)
+        {
+            var jwt = new JsonWebTokenHandler().ReadJsonWebToken(response.Token);
+
+            Response.Cookies.Append("access_token", response.Token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = new DateTimeOffset(jwt.ValidTo)
+            });
+
+            Response.Cookies.Append("refresh_token", response.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/api/auth",
+                Expires = new DateTimeOffset(response.SesionExpira)
+            });
+        }
+
+        private void EliminarCookies()
+        {
+            Response.Cookies.Delete("access_token", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/"
+            });
+
+            Response.Cookies.Delete("refresh_token", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/api/auth"
+            });
         }
     }
 }

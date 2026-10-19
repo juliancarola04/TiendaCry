@@ -4,6 +4,8 @@ namespace TiendaCry.Backend.Repositories
 {
     public interface ITokenService
     {
-        (string token, DateTime expiracion) CrearToken(Usuario usuario);
+        string CrearToken(Usuario usuario);
+        string CrearRefreshToken();
+        string CalcularHash(string token);
     }
 }
