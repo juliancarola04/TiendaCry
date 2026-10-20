@@ -1,0 +1,148 @@
+@page "/modificar-correo"
+@layout AutenticacionLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Auth.Request
+@using TiendaCry.Shared.DTO.Auth.Response
+@using TiendaCry.Shared.ViewModels.Auth
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>Modificar correo</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Modificar correo
+    </MudText>
+
+    <MudText Align="Align.Center">
+        Ingresá la dirección que querés verificar.
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    <MudForm @ref="_formulario"
+             Model="_modelo"
+             Disabled="_procesando"
+             OnEnterPressed="Guardar">
+        <MudStack Spacing="4">
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Email"
+                          Label="E-mail"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu e-mail."
+                          InputType="InputType.Email"
+                          MaxLength="254" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="_procesando"
+                       OnClick="Guardar">
+                @(_procesando ? "Guardando..." : "Guardar correo")
+            </MudButton>
+        </MudStack>
+    </MudForm>
+
+    <MudButton Href="/verificar-correo" FullWidth="true">
+        Volver atrás
+    </MudButton>
+</MudStack>
+
+@code {
+    private readonly ModificarEmailViewModel _modelo = new ModificarEmailViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+
+            if (usuario.EmailVerificado)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            _modelo.Email = usuario.Email;
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            ModificarEmailRequest request = new ModificarEmailRequest(_modelo.Email);
+
+            await AutenticacionService.ModificarEmail(request);
+
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+
+            Navigation.NavigateTo("/verificar-correo");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            SesionUsuarioService.Limpiar();
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            _error = "No se pudo completar la solicitud. Intentá nuevamente.";
+        }
+    }
+}

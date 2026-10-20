@@ -12,15 +12,18 @@ namespace TiendaCry.Backend.Services
         private readonly IRegisterRepository _repo;
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly ITokenService _tokenService;
+        private readonly ISesionUsuarioRepository _sesionRepository;
 
         public RegisterService(
             IRegisterRepository repo,
             IUsuarioRepository usuarioRepository,
-            ITokenService tokenService)
+            ITokenService tokenService,
+            ISesionUsuarioRepository sesionRepository)
         {
             _repo = repo;
             _usuarioRepository = usuarioRepository;
             _tokenService = tokenService;
+            _sesionRepository = sesionRepository;
         }
 
         public async Task<RegisterResponse> Registrarse(
@@ -93,9 +96,21 @@ namespace TiendaCry.Backend.Services
 
             await _repo.Registrarse(usuario);
 
-            var token = _tokenService.CrearToken(usuario);
+            string token = _tokenService.CrearToken(usuario);
+            string refreshToken = _tokenService.CrearRefreshToken();
+            DateTime ahora = DateTime.UtcNow;
 
-            return new RegisterResponse(token);
+            SesionUsuario sesion = new SesionUsuario
+            {
+                IdUsuario = usuario.Id,
+                RefreshToken = _tokenService.CalcularHash(refreshToken),
+                FechaCreacion = ahora,
+                FechaVencimiento = ahora.AddDays(30)
+            };
+
+            await _sesionRepository.Crear(sesion);
+
+            return new RegisterResponse(token, refreshToken, sesion.FechaVencimiento);
         }
     }
 }

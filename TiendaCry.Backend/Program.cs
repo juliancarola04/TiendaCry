@@ -104,6 +104,17 @@ namespace TiendaCry.Backend
             {
                 AllowAutoRedirect = true
             });
+            
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("Web", policy =>
+                {
+                    policy.WithOrigins("https://localhost:7264")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                });
+            });
 
             builder.Services.AddScoped<SeederEstados>();
             builder.Services.AddScoped<SeederTiposTokenEmail>();
@@ -151,6 +162,8 @@ namespace TiendaCry.Backend
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("Web");
 
             app.UseAuthentication();
             app.UseAuthorization();

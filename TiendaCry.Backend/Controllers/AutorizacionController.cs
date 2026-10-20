@@ -51,7 +51,7 @@ namespace TiendaCry.Backend.Controllers
             {
                 var response = await _loginService.Login(request);
 
-                GuardarCookies(response);
+                GuardarCookies(response.Token, response.RefreshToken, response.SesionExpira);
 
                 return NoContent();
             }
@@ -62,6 +62,29 @@ namespace TiendaCry.Backend.Controllers
             catch (CredencialesInvalidasException e)
             {
                 return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("web/register")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegisterWeb(RegisterRequest request)
+        {
+            try
+            {
+                RegisterResponse response = await _registerService.Registrarse(request);
+
+                GuardarCookies(response.Token, response.RefreshToken, response.SesionExpira);
+
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (RecursoExistenteException e)
+            {
+                return Conflict(e.Message);
             }
         }
 
@@ -82,7 +105,7 @@ namespace TiendaCry.Backend.Controllers
             {
                 var response = await _sesionService.Renovar(refreshToken);
 
-                GuardarCookies(response);
+                GuardarCookies(response.Token, response.RefreshToken, response.SesionExpira);
 
                 return NoContent();
             }
@@ -195,6 +218,33 @@ namespace TiendaCry.Backend.Controllers
             }
         }
 
+        [HttpPut("email-sin-verificar")]
+        [Authorize]
+        public async Task<IActionResult> ModificarEmailSinVerificar(ModificarEmailRequest request)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                await _usuarioService.ModificarEmailSinVerificar(idUsuario, request);
+
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (RecursoExistenteException e)
+            {
+                return Conflict(e.Message);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+        }
+
         [HttpGet("usuario-actual")]
         [Authorize]
         public async Task<ActionResult<UsuarioActualResponse>> ObtenerUsuarioActual()
@@ -254,11 +304,11 @@ namespace TiendaCry.Backend.Controllers
                 return Unauthorized(e.Message);
             }
         }
-        private void GuardarCookies(LoginResponse response)
+        private void GuardarCookies(string token, string refreshToken, DateTime sesionExpira)
         {
-            var jwt = new JsonWebTokenHandler().ReadJsonWebToken(response.Token);
+            JsonWebToken jwt = new JsonWebTokenHandler().ReadJsonWebToken(token);
 
-            Response.Cookies.Append("access_token", response.Token, new CookieOptions
+            Response.Cookies.Append("access_token", token, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
@@ -267,13 +317,13 @@ namespace TiendaCry.Backend.Controllers
                 Expires = new DateTimeOffset(jwt.ValidTo)
             });
 
-            Response.Cookies.Append("refresh_token", response.RefreshToken, new CookieOptions
+            Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Lax,
                 Path = "/api/auth",
-                Expires = new DateTimeOffset(response.SesionExpira)
+                Expires = new DateTimeOffset(sesionExpira)
             });
         }
 

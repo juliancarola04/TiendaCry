@@ -9,5 +9,6 @@ namespace TiendaCry.Backend.Repositories
         Task<Usuario?> BuscarPorUsername(string username);
         Task<Usuario?> BuscarPorId(int id);
         Task<bool> EstaActivo(int id);
+        Task<bool> ModificarEmailSinVerificar(int idUsuario, string email, DateTime ahora);
     }
 }

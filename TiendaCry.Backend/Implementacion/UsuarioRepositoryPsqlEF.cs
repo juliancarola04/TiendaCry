@@ -26,6 +26,32 @@ namespace TiendaCry.Backend.Implementacion
                 .AnyAsync(u => u.Email == email);
         }
 
+        public async Task<bool> ModificarEmailSinVerificar(int idUsuario, string email, DateTime ahora)
+        {
+            Usuario? usuario = await _dataContext.Usuarios
+                .Include(u => u.TokensEmail.Where(t =>
+                    t.TipoTokenEmail.Nombre == "VerificacionEmail"
+                    && !t.Usado
+                    && t.FechaVencimiento > ahora))
+                .FirstOrDefaultAsync(u => u.Id == idUsuario && !u.EmailVerificado);
+
+            if (usuario is null)
+            {
+                return false;
+            }
+
+            usuario.Email = email;
+
+            foreach (TokenEmail token in usuario.TokensEmail)
+            {
+                token.FechaVencimiento = ahora;
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return true;
+        }
+
         public async Task<bool> EstaActivo(int id)
         {
             return await _dataContext.Usuarios

@@ -1,0 +1,94 @@
+@page "/verificar-email"
+@layout AutenticacionLayout
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+
+<PageTitle>Confirmar correo</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Confirmar correo
+    </MudText>
+
+    @if (_confirmado)
+    {
+        <MudAlert Severity="Severity.Success">
+            Tu correo fue verificado correctamente.
+        </MudAlert>
+
+        <MudText Align="Align.Center">
+            Podés volver a la pestaña anterior y presionar
+            “Ya verifiqué mi correo”, o iniciar sesión.
+        </MudText>
+    }
+    else if (string.IsNullOrWhiteSpace(Token))
+    {
+        <MudAlert Severity="Severity.Error">
+            El enlace no contiene un token de verificación.
+        </MudAlert>
+    }
+    else
+    {
+        <MudText Align="Align.Center">
+            Presioná el botón para confirmar tu correo.
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Disabled="_procesando"
+                   OnClick="Confirmar">
+            @(_procesando ? "Confirmando..." : "Confirmar mi correo")
+        </MudButton>
+    }
+
+    <MudButton Href="/login" FullWidth="true">
+        Ir al inicio de sesión
+    </MudButton>
+</MudStack>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    private bool _procesando;
+    private bool _confirmado;
+    private string? _error;
+
+    private async Task Confirmar()
+    {
+        if (_procesando || string.IsNullOrWhiteSpace(Token))
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await AutenticacionService.ConfirmarEmail(Token);
+
+            _confirmado = true;
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la solicitud. Intentá nuevamente.";
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}
