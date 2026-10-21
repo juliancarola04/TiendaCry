@@ -1,0 +1,135 @@
+@page "/restablecer-contrasena"
+@layout AutenticacionLayout
+@using TiendaCry.Shared.DTO.Auth.Request
+@using TiendaCry.Shared.ViewModels.Auth
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+
+<PageTitle>Restablecer contraseña</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Restablecer contraseña
+    </MudText>
+
+    @if (_restablecida)
+    {
+        <MudAlert Severity="Severity.Success">
+            La contraseña fue restablecida. Iniciá sesión nuevamente.
+        </MudAlert>
+    }
+    else if (string.IsNullOrWhiteSpace(Token) || Token.Length != 64)
+    {
+        <MudAlert Severity="Severity.Error">
+            El link no contiene un token válido.
+        </MudAlert>
+
+        <MudButton Href="/recuperar-contrasena" FullWidth="true">
+            Solicitar otro link
+        </MudButton>
+    }
+    else
+    {
+        <MudText Align="Align.Center">
+            Ingresá tu contraseña nueva.
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+        }
+
+        <MudForm @ref="_formulario"
+                 Model="_modelo"
+                 Disabled="_procesando"
+                 OnEnterPressed="Guardar">
+            <MudStack Spacing="4">
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Contrasena"
+                              Label="Contraseña"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá tu contraseña nueva."
+                              InputType="InputType.Password" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="_procesando"
+                           OnClick="Guardar">
+                    @(_procesando ? "Guardando..." : "Guardar")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+
+        <MudButton Href="/recuperar-contrasena"
+                   FullWidth="true"
+                   Disabled="_procesando">
+            Solicitar otro link
+        </MudButton>
+    }
+
+    <MudButton Href="/login" FullWidth="true" Disabled="_procesando">
+        Ir al inicio de sesión
+    </MudButton>
+</MudStack>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    private readonly RestablecerContrasenaViewModel _modelo = new RestablecerContrasenaViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private bool _restablecida;
+    private string? _error;
+
+    private async Task Guardar()
+    {
+        if (_procesando || _restablecida || string.IsNullOrWhiteSpace(Token) || Token.Length != 64)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            RestablecerContrasenaRequest request = new RestablecerContrasenaRequest(Token, _modelo.Contrasena);
+
+            await AutenticacionService.RestablecerContrasena(request);
+
+            _modelo.Contrasena = string.Empty;
+            _restablecida = true;
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo restablecer la contraseña.";
+            }
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

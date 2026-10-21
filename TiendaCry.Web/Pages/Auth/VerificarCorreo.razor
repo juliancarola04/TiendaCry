@@ -15,7 +15,7 @@
     </MudText>
 
     <MudText Align="Align.Center">
-        Para continuar, confirmá tu dirección desde el enlace del correo.
+        Para continuar, confirmá tu dirección desde el link del correo.
     </MudText>
 
     @if (SesionUsuarioService.UsuarioActual is not null)
@@ -123,7 +123,7 @@
         {
             await AutenticacionService.EnviarVerificacionEmail();
 
-            _mensaje = "Se envió el correo de verificación. Abrí el enlace recibido.";
+            _mensaje = "Se envió el correo de verificación. Abrí el link recibido.";
         }
         catch (HttpRequestException e)
         {

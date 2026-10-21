@@ -1,22 +1,95 @@
 ﻿@inherits LayoutComponentBase
+@using System.Net
+@using TiendaCry.Shared.DTO.Auth.Response
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            <BotonCerrarSesion />
+@if (_cargando)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <MudStack Spacing="3" Class="pa-6">
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+
+        <MudButton OnClick="CargarSesion" Color="Color.Primary">
+            Reintentar
+        </MudButton>
+    </MudStack>
+}
+else if (SesionUsuarioService.UsuarioActual?.EmailVerificado == true)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
         </div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+        <main>
+            <div class="top-row px-4">
+                <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+                <BotonCerrarSesion />
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+
+@code {
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSesion();
+    }
+
+    private async Task CargarSesion()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+
+            if (!usuario.EmailVerificado)
+            {
+                Navigation.NavigateTo("/verificar-correo");
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                SesionUsuarioService.Limpiar();
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo recuperar la sesión. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

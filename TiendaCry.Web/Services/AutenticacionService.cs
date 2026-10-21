@@ -26,6 +26,20 @@ public class AutenticacionService
 
     public async Task<UsuarioActualResponse> ObtenerUsuarioActual()
     {
+        try
+        {
+            return await ConsultarUsuarioActual();
+        }
+        catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await RenovarSesion();
+
+            return await ConsultarUsuarioActual();
+        }
+    }
+
+    private async Task<UsuarioActualResponse> ConsultarUsuarioActual()
+    {
         using HttpRequestMessage solicitud = new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual");
         solicitud.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
 
@@ -44,7 +58,7 @@ public class AutenticacionService
 
     public async Task EnviarVerificacionEmail()
     {
-        await EnviarConCsrf(HttpMethod.Post, "api/auth/enviar-verificacion-email", null, "No se pudo enviar el correo de verificación.", true);
+        await EjecutarConRenovacion(() => EnviarConCsrf(HttpMethod.Post, "api/auth/enviar-verificacion-email", null, "No se pudo enviar el correo de verificación.", true));
     }
 
     public async Task ConfirmarEmail(string token)
@@ -56,12 +70,41 @@ public class AutenticacionService
 
     public async Task ModificarEmail(ModificarEmailRequest request)
     {
-        await EnviarConCsrf(HttpMethod.Put, "api/auth/email-sin-verificar", JsonContent.Create(request), "No se pudo modificar el correo.", true);
+        await EjecutarConRenovacion(() => EnviarConCsrf(HttpMethod.Put, "api/auth/email-sin-verificar", JsonContent.Create(request), "No se pudo modificar el correo.", true));
+    }
+
+    public async Task SolicitarRecuperacionContrasena(SolicitarRecuperacionContrasenaRequest request)
+    {
+        await EnviarConCsrf(HttpMethod.Post, "api/auth/solicitar-recuperacion-contrasena", JsonContent.Create(request), "No se pudo solicitar la recuperación de contraseña.");
+    }
+
+    public async Task RestablecerContrasena(RestablecerContrasenaRequest request)
+    {
+        await EnviarConCsrf(HttpMethod.Post, "api/auth/restablecer-contrasena", JsonContent.Create(request), "No se pudo restablecer la contraseña.");
     }
 
     public async Task CerrarSesion()
     {
         await EnviarConCsrf(HttpMethod.Post, "api/auth/web/logout", null, "No se pudo cerrar la sesión.");
+    }
+
+    private async Task EjecutarConRenovacion(Func<Task> accion)
+    {
+        try
+        {
+            await accion();
+        }
+        catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await RenovarSesion();
+
+            await accion();
+        }
+    }
+
+    private async Task RenovarSesion()
+    {
+        await EnviarConCsrf(HttpMethod.Post, "api/auth/web/refresh", null, "No se pudo renovar la sesión.", true);
     }
 
     private async Task EnviarConCsrf(

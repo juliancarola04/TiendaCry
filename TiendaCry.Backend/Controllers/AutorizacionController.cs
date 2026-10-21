@@ -18,19 +18,22 @@ namespace TiendaCry.Backend.Controllers
         private readonly UsuarioService _usuarioService;
         private readonly VerificacionEmailService _verificacionEmailService;
         private readonly SesionService _sesionService;
+        private readonly RecuperacionContrasenaService _recuperacionContrasenaService;
 
         public AutorizacionController(
             LoginService loginService,
             RegisterService registerService,
             UsuarioService usuarioService,
             VerificacionEmailService verificacionEmailService,
-            SesionService sesionService)
+            SesionService sesionService,
+            RecuperacionContrasenaService recuperacionContrasenaService)
         {
             _loginService = loginService;
             _registerService = registerService;
             _usuarioService = usuarioService;
             _verificacionEmailService = verificacionEmailService;
             _sesionService = sesionService;
+            _recuperacionContrasenaService = recuperacionContrasenaService;
         }
 
         [HttpGet("web/csrf")]
@@ -175,6 +178,38 @@ namespace TiendaCry.Backend.Controllers
             catch (SesionInvalidaException e)
             {
                 return Unauthorized(e.Message);
+            }
+        }
+
+        [HttpPost("solicitar-recuperacion-contrasena")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SolicitarRecuperacionContrasena(SolicitarRecuperacionContrasenaRequest request)
+        {
+            try
+            {
+                await _recuperacionContrasenaService.SolicitarRecuperacion(request);
+
+                return Ok("Si el correo corresponde a un usuario habilitado, vas a recibir un link para restablecer tu contraseña.");
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpPost("restablecer-contrasena")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RestablecerContrasena(RestablecerContrasenaRequest request)
+        {
+            try
+            {
+                await _recuperacionContrasenaService.RestablecerContrasena(request);
+
+                return Ok("La contraseña fue restablecida. Iniciá sesión nuevamente.");
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
             }
         }
 

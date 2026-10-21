@@ -9,5 +9,6 @@ namespace TiendaCry.Backend.Options
         public string FromEmail { get; set; } = string.Empty;
         public string FromName { get; set; } = string.Empty;
         public string UrlVerificacion { get; set; } = string.Empty;
+        public string UrlRecuperacionContrasena { get; set; } = string.Empty;
     }
 }

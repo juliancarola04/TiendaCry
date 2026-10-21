@@ -1,0 +1,146 @@
+@page "/recuperar-contrasena"
+@layout AutenticacionLayout
+@using TiendaCry.Shared.DTO.Auth.Request
+@using TiendaCry.Shared.ViewModels.Auth
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+
+<PageTitle>Recuperar contraseña</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Recuperar contraseña
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    @if (!_solicitado)
+    {
+        <MudText Align="Align.Center">
+            Ingresá el e-mail asociado a tu cuenta.
+        </MudText>
+
+        <MudForm @ref="_formulario"
+                 Model="_modelo"
+                 Disabled="_procesando"
+                 OnEnterPressed="Enviar">
+            <MudStack Spacing="4">
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Email"
+                              Label="E-mail"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá tu e-mail."
+                              InputType="InputType.Email"
+                              MaxLength="254" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="_procesando"
+                           OnClick="Enviar">
+                    @(_procesando ? "Enviando..." : "Enviar")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info">
+            Si el correo corresponde a un usuario habilitado, vas a recibir
+            un link para restablecer tu contraseña.
+        </MudAlert>
+
+        <MudText Align="Align.Center">
+            Abrí el link del correo para elegir una contraseña nueva.
+        </MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Disabled="_procesando"
+                   OnClick="Enviar">
+            @(_procesando ? "Enviando..." : "Reenviar")
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Disabled="_procesando"
+                   OnClick="CorregirCorreo">
+            Corregir correo
+        </MudButton>
+    }
+
+    <MudButton Href="/login" FullWidth="true" Disabled="_procesando">
+        Volver al login
+    </MudButton>
+</MudStack>
+
+@code {
+    private readonly RecuperarContrasenaViewModel _modelo = new RecuperarContrasenaViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private bool _solicitado;
+    private string? _error;
+
+    private async Task Enviar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            if (!_solicitado)
+            {
+                await _formulario.ValidateAsync();
+
+                if (!_formulario.IsValid)
+                {
+                    return;
+                }
+            }
+
+            SolicitarRecuperacionContrasenaRequest request = new SolicitarRecuperacionContrasenaRequest(_modelo.Email);
+
+            await AutenticacionService.SolicitarRecuperacionContrasena(request);
+
+            _solicitado = true;
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo solicitar la recuperación de contraseña.";
+            }
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void CorregirCorreo()
+    {
+        _error = null;
+        _solicitado = false;
+    }
+}

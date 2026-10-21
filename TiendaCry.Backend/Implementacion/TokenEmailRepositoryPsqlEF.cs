@@ -49,6 +49,41 @@ namespace TiendaCry.Backend.Implementacion
             return true;
         }
 
+        public async Task<bool> RestablecerContrasena(string codigo, string contrasena, DateTime ahora)
+        {
+            TokenEmail? token = await _dataContext.TokensEmail
+                .Include(t => t.Usuario)
+                .FirstOrDefaultAsync(t =>
+                    t.Codigo == codigo
+                    && t.TipoTokenEmail.Nombre == "RecuperacionContrasena"
+                    && !t.Usado
+                    && t.FechaVencimiento > ahora
+                    && t.Usuario.EmailVerificado
+                    && t.Usuario.EstadoUsuario.Nombre == "Activo");
+
+            if (token is null)
+            {
+                return false;
+            }
+
+            List<SesionUsuario> sesiones = await _dataContext.SesionesUsuario
+                .Where(s => s.IdUsuario == token.IdUsuario && s.FechaRevocacion == null)
+                .ToListAsync();
+
+            token.Usuario.Contrasena = contrasena;
+            token.Usuario.DebeCambiarContrasena = false;
+            token.Usado = true;
+
+            foreach (SesionUsuario sesion in sesiones)
+            {
+                sesion.FechaRevocacion = ahora;
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return true;
+        }
+
         public async Task GuardarAsync(TokenEmail token)
         {
             var anteriores = await _dataContext.TokensEmail

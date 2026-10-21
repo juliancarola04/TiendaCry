@@ -40,19 +40,19 @@ namespace TiendaCry.Backend.Services
 
             var token = await GenerarTokenAsync(idUsuario);
 
-            var enlace = new UriBuilder(_settings.UrlVerificacion)
+            var link = new UriBuilder(_settings.UrlVerificacion)
             {
                 Query = $"token={token}",
                 Fragment = string.Empty
             }.Uri.AbsoluteUri;
 
-            var enlaceHtml = WebUtility.HtmlEncode(enlace);
+            var linkHtml = WebUtility.HtmlEncode(link);
 
             var contenidoHtml =
                 "<h1>Verificá tu correo</h1>" +
-                "<p>Para confirmar tu dirección, abrí el siguiente enlace.</p>" +
-                $"<p><a href=\"{enlaceHtml}\">Verificar mi correo</a></p>" +
-                "<p>El enlace vence en 30 minutos.</p>";
+                "<p>Para confirmar tu dirección, abrí el siguiente link.</p>" +
+                $"<p><a href=\"{linkHtml}\">Verificar mi correo</a></p>" +
+                "<p>El link vence en 30 minutos.</p>";
 
             await _emailService.EnviarAsync(
                 usuario.Email,
@@ -65,7 +65,7 @@ namespace TiendaCry.Backend.Services
             if (!Validaciones.EstanDatosBien(token) || token.Length != 64)
             {
                 throw new DatosLlegaronErradosException(
-                    "El enlace de verificación es inválido, venció o ya fue utilizado.");
+                    "El link de verificación es inválido, venció o ya fue utilizado.");
             }
 
             var codigo = Convert.ToHexString(
@@ -78,7 +78,7 @@ namespace TiendaCry.Backend.Services
             if (!confirmado)
             {
                 throw new DatosLlegaronErradosException(
-                    "El enlace de verificación es inválido, venció o ya fue utilizado.");
+                    "El link de verificación es inválido, venció o ya fue utilizado.");
             }
         }
 

@@ -66,6 +66,14 @@ namespace TiendaCry.Backend.Implementacion
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public async Task<Usuario?> BuscarPorEmail(string email)
+        {
+            return await _dataContext.Usuarios
+                .AsNoTracking()
+                .Include(u => u.EstadoUsuario)
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
         public async Task<Usuario?> BuscarPorUsername(string username)
         {
             return await _dataContext.Usuarios

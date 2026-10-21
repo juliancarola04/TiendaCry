@@ -30,6 +30,7 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<ITokenEmailRepository, TokenEmailRepositoryPsqlEF>();
             builder.Services.AddScoped<VerificacionEmailService>();
+            builder.Services.AddScoped<RecuperacionContrasenaService>();
 
             builder.Services.AddOptions<EmailSettings>()
                 .BindConfiguration("EmailSettings");
