@@ -113,7 +113,7 @@ namespace TiendaCry.Backend
                 {
                     options.AddPolicy("Web", policy =>
                     {
-                        policy.WithOrigins("https://tiendacry.runasp.net/")
+                        policy.WithOrigins("https://tiendacry.runasp.net")
                             .AllowAnyHeader()
                             .AllowAnyMethod()
                             .AllowCredentials();
