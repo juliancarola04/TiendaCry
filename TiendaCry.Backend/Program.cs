@@ -106,15 +106,29 @@ namespace TiendaCry.Backend
                 AllowAutoRedirect = true
             });
             
+
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("Web", policy =>
+                if (builder.Environment.IsProduction())
                 {
-                    policy.WithOrigins("https://localhost:7264")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                });
+                    options.AddPolicy("Web", policy =>
+                    {
+                        policy.WithOrigins("https://tiendacry.runasp.net/")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                    });
+                }
+                else if (builder.Environment.IsDevelopment())
+                {
+                    options.AddPolicy("Web", policy =>
+                    {
+                        policy.WithOrigins("https://localhost:7264")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                    });
+                }
             });
 
             builder.Services.AddScoped<SeederEstados>();
