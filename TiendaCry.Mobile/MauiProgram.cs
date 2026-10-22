@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
+using TiendaCry.Mobile.Services;
 
 namespace TiendaCry.Mobile;
 
@@ -17,6 +18,7 @@ public static class MauiProgram
 
 		builder.Services.AddMauiBlazorWebView();
 		builder.Services.AddMudServices();
+		builder.Services.AddSingleton<AlmacenamientoTokensService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
