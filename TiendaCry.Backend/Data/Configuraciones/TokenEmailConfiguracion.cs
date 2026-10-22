@@ -27,7 +27,8 @@ namespace TiendaCry.Backend.Data.Configuraciones
                 .HasColumnType("timestamp with time zone");
 
             builder.Property(t => t.Usado)
-                .IsRequired();
+                .IsRequired()
+                .IsConcurrencyToken();
 
             builder.HasOne(t => t.TipoTokenEmail)
                 .WithMany(t => t.TokensEmail)

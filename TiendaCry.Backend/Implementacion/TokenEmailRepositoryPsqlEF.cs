@@ -44,9 +44,16 @@ namespace TiendaCry.Backend.Implementacion
             token.Usado = true;
             token.Usuario.EmailVerificado = true;
 
-            await _dataContext.SaveChangesAsync();
-
-            return true;
+            try
+            {
+                await _dataContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _dataContext.ChangeTracker.Clear();
+                return false;
+            }
         }
 
         public async Task<bool> RestablecerContrasena(string codigo, string contrasena, DateTime ahora)
@@ -79,9 +86,16 @@ namespace TiendaCry.Backend.Implementacion
                 sesion.FechaRevocacion = ahora;
             }
 
-            await _dataContext.SaveChangesAsync();
-
-            return true;
+            try
+            {
+                await _dataContext.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                _dataContext.ChangeTracker.Clear();
+                return false;
+            }
         }
 
         public async Task GuardarAsync(TokenEmail token)

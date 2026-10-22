@@ -75,6 +75,12 @@ public class RecuperacionContrasenaService
 
         int? idTipo = await _tokenEmailRepository.ObtenerIdTipoPorNombre("RecuperacionContrasena");
 
+        if (idTipo is null)
+        {
+            throw new InvalidOperationException(
+                "No está configurado el tipo de token RecuperacionContrasena.");
+        }
+
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         string codigo = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
         DateTime ahora = DateTime.UtcNow;

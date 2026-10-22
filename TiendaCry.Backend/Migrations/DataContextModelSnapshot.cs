@@ -578,6 +578,7 @@ namespace TiendaCry.Backend.Migrations
                         .HasColumnType("integer");
 
                     b.Property<bool>("Usado")
+                        .IsConcurrencyToken()
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
