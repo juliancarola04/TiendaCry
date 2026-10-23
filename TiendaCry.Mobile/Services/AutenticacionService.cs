@@ -18,17 +18,7 @@ public class AutenticacionService
 
     public async Task<UsuarioActualResponse> ObtenerUsuarioActual()
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
-
-        if (sesion is null)
-        {
-            throw new InvalidOperationException("No hay una sesión guardada.");
-        }
-
-        using HttpRequestMessage solicitud = new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual");
-        solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sesion.Token);
-
-        using HttpResponseMessage respuesta = await _httpClient.SendAsync(solicitud);
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
         respuesta.EnsureSuccessStatusCode();
 
         UsuarioActualResponse? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioActualResponse>();
@@ -43,51 +33,78 @@ public class AutenticacionService
 
     public async Task EnviarVerificacionEmail()
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Post, "api/auth/enviar-verificacion-email"));
 
-        if (sesion is null)
-        {
-            throw new InvalidOperationException("No hay una sesión guardada.");
-        }
-
-        using HttpRequestMessage solicitud = new HttpRequestMessage(HttpMethod.Post, "api/auth/enviar-verificacion-email");
-        solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sesion.Token);
-
-        using HttpResponseMessage respuesta = await _httpClient.SendAsync(solicitud);
-
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
-
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo enviar el correo de verificación.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
+        await ComprobarRespuesta(respuesta, "No se pudo enviar el correo de verificación.");
     }
 
     public async Task ModificarEmail(ModificarEmailRequest request)
+    {
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, "api/auth/email-sin-verificar")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        await ComprobarRespuesta(respuesta, "No se pudo modificar el correo.");
+    }
+
+    private async Task RenovarSesion()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
 
         if (sesion is null)
         {
-            throw new InvalidOperationException("No hay una sesión guardada.");
+            throw new HttpRequestException("No hay una sesión guardada.", null, System.Net.HttpStatusCode.Unauthorized);
         }
 
-        using HttpRequestMessage solicitud = new HttpRequestMessage(HttpMethod.Put, "api/auth/email-sin-verificar");
+        RefreshRequest request = new RefreshRequest(sesion.RefreshToken);
+
+        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/refresh", request);
+        respuesta.EnsureSuccessStatusCode();
+
+        LoginResponse? nuevaSesion = await respuesta.Content.ReadFromJsonAsync<LoginResponse>();
+
+        if (nuevaSesion is null || string.IsNullOrWhiteSpace(nuevaSesion.Token) || string.IsNullOrWhiteSpace(nuevaSesion.RefreshToken))
+        {
+            throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
+        }
+
+        await _almacenamientoTokensService.Guardar(nuevaSesion);
+    }
+
+    private async Task<HttpResponseMessage> EnviarConToken(Func<HttpRequestMessage> crearSolicitud)
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (sesion is null)
+        {
+            throw new HttpRequestException("No hay una sesión guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+        }
+
+        using HttpRequestMessage solicitud = crearSolicitud();
         solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sesion.Token);
-        solicitud.Content = JsonContent.Create(request);
 
-        using HttpResponseMessage respuesta = await _httpClient.SendAsync(solicitud);
+        return await _httpClient.SendAsync(solicitud);
+    }
 
+    private async Task<HttpResponseMessage> EnviarAutenticado(Func<HttpRequestMessage> crearSolicitud)
+    {
+        HttpResponseMessage respuesta = await EnviarConToken(crearSolicitud);
+
+        if (respuesta.StatusCode != System.Net.HttpStatusCode.Unauthorized)
+        {
+            return respuesta;
+        }
+
+        respuesta.Dispose();
+
+        await RenovarSesion();
+
+        return await EnviarConToken(crearSolicitud);
+    }
+
+    private async Task ComprobarRespuesta(HttpResponseMessage respuesta, string mensajeError)
+    {
         if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             respuesta.EnsureSuccessStatusCode();
@@ -99,7 +116,7 @@ public class AutenticacionService
 
             if (string.IsNullOrWhiteSpace(mensaje))
             {
-                mensaje = "No se pudo modificar el correo.";
+                mensaje = mensajeError;
             }
 
             throw new InvalidOperationException(mensaje);
