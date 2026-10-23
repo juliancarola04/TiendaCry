@@ -1,0 +1,158 @@
+@page "/verificar-correo"
+@layout AutenticacionLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Auth.Response
+@using TiendaCry.Mobile.Services
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+<PageTitle>Verificá tu correo</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Verificá tu correo
+    </MudText>
+
+    <MudText Align="Align.Center">
+        Para continuar, confirmá tu dirección desde el link del correo.
+        Después volvé a la app.
+    </MudText>
+
+    @if (_usuario is not null)
+    {
+        <MudText Align="Align.Center">
+            @_usuario.Email
+        </MudText>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_mensaje))
+    {
+        <MudAlert Severity="Severity.Info">
+            @_mensaje
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               FullWidth="true"
+               Disabled="_procesando"
+               OnClick="EnviarCorreo">
+        Enviar o reenviar correo
+    </MudButton>
+
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               FullWidth="true"
+               Disabled="_procesando"
+               OnClick="ComprobarVerificacion">
+        Ya verifiqué mi correo
+    </MudButton>
+
+    <MudButton Href="/modificar-correo"
+               FullWidth="true"
+               Disabled="_procesando">
+        Modificar correo
+    </MudButton>
+
+    <BotonCerrarSesion />
+</MudStack>
+
+@code {
+    private UsuarioActualResponse? _usuario;
+    private bool _procesando;
+    private string? _mensaje;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ComprobarVerificacion();
+    }
+
+    private async Task ComprobarVerificacion()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+        _mensaje = null;
+
+        try
+        {
+            _usuario = await AutenticacionService.ObtenerUsuarioActual();
+
+            if (_usuario.EmailVerificado)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _mensaje = "Tu correo todavía no está verificado.";
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private async Task EnviarCorreo()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+        _mensaje = null;
+
+        try
+        {
+            await AutenticacionService.EnviarVerificacionEmail();
+
+            _mensaje = "Se envió el correo de verificación. Abrí el link recibido.";
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            _error = "No se pudo completar la solicitud. Intentá nuevamente.";
+        }
+    }
+}

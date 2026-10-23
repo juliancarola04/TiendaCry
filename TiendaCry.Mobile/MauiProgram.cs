@@ -19,6 +19,15 @@ public static class MauiProgram
 		builder.Services.AddMauiBlazorWebView();
 		builder.Services.AddMudServices();
 		builder.Services.AddSingleton<AlmacenamientoTokensService>();
+		builder.Services.AddHttpClient("TiendaCry", cliente =>
+		{
+			cliente.BaseAddress = new Uri("https://tiendacry-backend.runasp.net/");
+		})
+		.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+		{
+			UseCookies = false
+		});
+		builder.Services.AddScoped<AutenticacionService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
