@@ -35,22 +35,7 @@ public class AutenticacionService
     {
         using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Post, "api/auth/enviar-verificacion-email"));
 
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
-
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo enviar el correo de verificación.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
+        await ComprobarRespuesta(respuesta, "No se pudo enviar el correo de verificación.");
     }
 
     public async Task ModificarEmail(ModificarEmailRequest request)
@@ -60,22 +45,7 @@ public class AutenticacionService
             Content = JsonContent.Create(request)
         });
 
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
-
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo modificar el correo.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
+        await ComprobarRespuesta(respuesta, "No se pudo modificar el correo.");
     }
 
     public async Task Registrarse(RegisterRequest request)
@@ -248,5 +218,25 @@ public class AutenticacionService
         }
 
         await _almacenamientoTokensService.Guardar(nuevaSesion);
+    }
+
+    private async Task ComprobarRespuesta(HttpResponseMessage respuesta, string mensajeError)
+    {
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
+
+        if (!respuesta.IsSuccessStatusCode)
+        {
+            string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(mensaje))
+            {
+                mensaje = mensajeError;
+            }
+
+            throw new InvalidOperationException(mensaje);
+        }
     }
 }
