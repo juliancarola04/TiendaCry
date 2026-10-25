@@ -9,7 +9,6 @@ using TiendaCry.Backend.Options;
 using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Data;
 using TiendaCry.Backend.Data.Seeder;
-using TiendaCry.Backend.Filters;
 
 namespace TiendaCry.Backend
 {
@@ -61,15 +60,6 @@ namespace TiendaCry.Backend
 
                     options.Events = new JwtBearerEvents
                     {
-                        OnMessageReceived = context =>
-                        {
-                            if (!context.Request.Headers.ContainsKey("Authorization"))
-                            {
-                                context.Token = context.Request.Cookies["access_token"];
-                            }
-
-                            return Task.CompletedTask;
-                        },
                         OnTokenValidated = async context =>
                         {
                             var sub = context.Principal?
@@ -115,8 +105,7 @@ namespace TiendaCry.Backend
                     {
                         policy.WithOrigins("https://tiendacry.runasp.net")
                             .AllowAnyHeader()
-                            .AllowAnyMethod()
-                            .AllowCredentials();
+                            .AllowAnyMethod();
                     });
                 }
                 else if (builder.Environment.IsDevelopment())
@@ -125,8 +114,7 @@ namespace TiendaCry.Backend
                     {
                         policy.WithOrigins("https://localhost:7264")
                             .AllowAnyHeader()
-                            .AllowAnyMethod()
-                            .AllowCredentials();
+                            .AllowAnyMethod();
                     });
                 }
             });
@@ -135,18 +123,7 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<SeederTiposTokenEmail>();
             builder.Services.AddScoped<SeederUbicacion>();
 
-            builder.Services.AddControllersWithViews(options =>
-            {
-                options.Filters.Add<CookieCsrfFilter>();
-            });
-
-            builder.Services.AddAntiforgery(options =>
-            {
-                options.HeaderName = "X-CSRF-TOKEN";
-                options.Cookie.HttpOnly = true;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                options.Cookie.SameSite = SameSiteMode.Lax;
-            });
+            builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 

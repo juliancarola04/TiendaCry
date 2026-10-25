@@ -14,6 +14,7 @@ builder.Services.AddHttpClient("TiendaCry", client =>
     client.BaseAddress = new Uri(builder.Configuration["Apis:TiendaCry"]!);
 });
 
+builder.Services.AddScoped<AlmacenamientoTokensService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<SesionUsuarioService>();
 
