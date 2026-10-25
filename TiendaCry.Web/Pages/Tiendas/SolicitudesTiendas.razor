@@ -1,0 +1,174 @@
+@page "/solicitudes-tiendas"
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>Solicitudes de tienda</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            Solicitudes de tienda
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+
+            <MudButton OnClick="CargarSolicitudes" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else if (_solicitudSeleccionada is not null)
+        {
+            <MudText Typo="Typo.h6">
+                @_solicitudSeleccionada.Nombre
+            </MudText>
+
+            <MudText>
+                La solicitud fue rechazada por el siguiente motivo:
+            </MudText>
+
+            <MudAlert Severity="Severity.Warning">
+                @_solicitudSeleccionada.MotivoRechazo
+            </MudAlert>
+
+            <MudButton Href="@($"/modificar-solicitud-tienda/{_solicitudSeleccionada.Id}")"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary">
+                Modificar
+            </MudButton>
+
+            <MudButton OnClick="VolverAlListado" Color="Color.Primary">
+                Volver al listado
+            </MudButton>
+        }
+        else if (_solicitudes.Count == 0)
+        {
+            <MudText Align="Align.Center">
+                No tenés tiendas.
+            </MudText>
+
+            <MudButton Href="/solicitar-alta-tienda"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary">
+                Solicitar alta
+            </MudButton>
+        }
+        else
+        {
+            <MudTable T="SolicitudTiendaResponse"
+                      Items="_solicitudes"
+                      Hover="true">
+                <HeaderContent>
+                    <MudTh>Tienda</MudTh>
+                    <MudTh>Estado</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="Tienda">
+                        @context.Nombre
+                    </MudTd>
+
+                    <MudTd DataLabel="Estado">
+                        @ObtenerNombreEstado(context.Estado)
+                    </MudTd>
+
+                    <MudTd>
+                        @if (context.Estado == "Rechazada")
+                        {
+                            <MudTooltip Text="Ver motivo del rechazo">
+                                <MudIconButton Icon="@Icons.Material.Filled.Assignment"
+                                               Color="Color.Primary"
+                                               aria-label="Ver motivo del rechazo"
+                                               OnClick="() => MostrarMotivo(context)" />
+                            </MudTooltip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<SolicitudTiendaResponse> _solicitudes = new List<SolicitudTiendaResponse>();
+    private SolicitudTiendaResponse? _solicitudSeleccionada;
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSolicitudes();
+    }
+
+    private async Task CargarSolicitudes()
+    {
+        _cargando = true;
+        _error = null;
+        _solicitudSeleccionada = null;
+
+        try
+        {
+            _solicitudes = await TiendaService.ObtenerSolicitudes();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                SesionUsuarioService.Limpiar();
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para consultar las solicitudes de tiendas.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron obtener las solicitudes de tiendas.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private string ObtenerNombreEstado(string estado)
+    {
+        if (estado == "PendienteRevision")
+        {
+            return "Pendiente de revisión";
+        }
+
+        return estado;
+    }
+
+    private void MostrarMotivo(SolicitudTiendaResponse solicitud)
+    {
+        _solicitudSeleccionada = solicitud;
+    }
+
+    private void VolverAlListado()
+    {
+        _solicitudSeleccionada = null;
+    }
+}

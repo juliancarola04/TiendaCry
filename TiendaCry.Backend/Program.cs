@@ -26,6 +26,12 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<SesionService>();
             builder.Services.AddScoped<RegisterService>();
             builder.Services.AddScoped<UsuarioService>();
+            builder.Services.AddScoped<ITiendaRepository, TiendaRepositoryPsqlEF>();
+            builder.Services.AddScoped<TiendaService>();
+            builder.Services.AddScoped<IProvinciaRepository, ProvinciaRepositoryPsqlEF>();
+            builder.Services.AddScoped<ProvinciaService>();
+            builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
+            builder.Services.AddScoped<CategoriaService>();
             builder.Services.AddScoped<EmailService>();
             builder.Services.AddScoped<ITokenEmailRepository, TokenEmailRepositoryPsqlEF>();
             builder.Services.AddScoped<VerificacionEmailService>();
@@ -120,6 +126,8 @@ namespace TiendaCry.Backend
             });
 
             builder.Services.AddScoped<SeederEstados>();
+            builder.Services.AddScoped<SeederRolesTienda>();
+            builder.Services.AddScoped<SeederCategorias>();
             builder.Services.AddScoped<SeederTiposTokenEmail>();
             builder.Services.AddScoped<SeederUbicacion>();
 
@@ -135,6 +143,14 @@ namespace TiendaCry.Backend
                     .GetRequiredService<SeederEstados>();
 
                 await seederEstados.SeedAsync();
+
+                SeederRolesTienda seederRolesTienda = scope.ServiceProvider.GetRequiredService<SeederRolesTienda>();
+
+                await seederRolesTienda.SeedAsync();
+
+                SeederCategorias seederCategorias = scope.ServiceProvider.GetRequiredService<SeederCategorias>();
+
+                await seederCategorias.SeedAsync();
 
                 var seederTiposTokenEmail = scope.ServiceProvider
                     .GetRequiredService<SeederTiposTokenEmail>();

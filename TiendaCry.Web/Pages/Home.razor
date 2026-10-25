@@ -1,7 +1,114 @@
 ﻿@page "/"
+@using System.Net
+@using TiendaCry.Shared.DTO.Auth.Response
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Inicio</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
 
-Welcome to your new app.
+            <MudButton OnClick="CargarInicio" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else if (_esAdministradorTiendaCry)
+        {
+            <MudText Typo="Typo.h5" HtmlTag="h1">
+                Administración de TiendaCry
+            </MudText>
+        }
+        else if (_tiendaActiva is not null)
+        {
+            <MudText Typo="Typo.h5" HtmlTag="h1">
+                @_tiendaActiva.Nombre
+            </MudText>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private bool _cargando = true;
+    private bool _esAdministradorTiendaCry;
+    private TiendaActivaResponse? _tiendaActiva;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarInicio();
+    }
+
+    private async Task CargarInicio()
+    {
+        _cargando = true;
+        _error = null;
+        _tiendaActiva = null;
+        _esAdministradorTiendaCry = false;
+
+        try
+        {
+            UsuarioActualResponse? usuario = SesionUsuarioService.UsuarioActual;
+
+            if (usuario is null)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            _esAdministradorTiendaCry = usuario.EsAdministradorTiendaCry;
+
+            if (_esAdministradorTiendaCry)
+            {
+                return;
+            }
+
+            _tiendaActiva = await TiendaService.ObtenerTiendaActiva();
+
+            if (_tiendaActiva is null)
+            {
+                Navigation.NavigateTo("/solicitudes-tiendas", replace: true);
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                SesionUsuarioService.Limpiar();
+                Navigation.NavigateTo("/login", replace: true);
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para consultar tu tienda activa.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo cargar el inicio.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

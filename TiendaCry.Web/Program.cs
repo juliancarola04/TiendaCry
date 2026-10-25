@@ -17,5 +17,8 @@ builder.Services.AddHttpClient("TiendaCry", client =>
 builder.Services.AddScoped<AlmacenamientoTokensService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<SesionUsuarioService>();
+builder.Services.AddScoped<TiendaService>();
+builder.Services.AddScoped<ProvinciaService>();
+builder.Services.AddScoped<CategoriaService>();
 
 await builder.Build().RunAsync();

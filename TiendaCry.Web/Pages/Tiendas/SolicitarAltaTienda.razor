@@ -1,0 +1,361 @@
+@page "/solicitar-alta-tienda"
+@page "/modificar-solicitud-tienda/{IdTienda:int}"
+@using System.Net
+@using TiendaCry.Shared.DTO.Categoria.Response
+@using TiendaCry.Shared.DTO.Ciudad.Response
+@using TiendaCry.Shared.DTO.Provincia.Response
+@using TiendaCry.Shared.DTO.Tienda.Request
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Shared.ViewModels.Tienda
+@using TiendaCry.Web.Services
+@inject ProvinciaService ProvinciaService
+@inject CategoriaService CategoriaService
+@inject TiendaService TiendaService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>@_titulo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            @_titulo
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+        }
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!_datosCargados)
+        {
+            <MudButton OnClick="CargarDatos" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else
+        {
+            <MudForm @ref="_formulario"
+                     Model="_modelo"
+                     Disabled="_procesando || _cargandoCiudades"
+                     OnEnterPressed="Enviar">
+                <MudStack Spacing="4">
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.Nombre"
+                                  Label="Nombre de la tienda"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Ingresá el nombre de la tienda." />
+
+                    <MudSelect T="int?"
+                               Value="_modelo.IdProvincia"
+                               ValueChanged="CambiarProvincia"
+                               Label="Provincia"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Seleccioná una provincia.">
+                        @foreach (ProvinciaResponse provincia in _provincias)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)provincia.Id)">
+                                @provincia.Nombre
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="int?"
+                               @key="_modelo.IdProvincia"
+                               @bind-Value="_modelo.IdCiudad"
+                               Label="Ciudad"
+                               Variant="Variant.Outlined"
+                               Disabled="_modelo.IdProvincia is null || _cargandoCiudades"
+                               Required="true"
+                               RequiredError="Seleccioná una ciudad.">
+                        @foreach (CiudadResponse ciudad in _ciudades)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)ciudad.Id)">
+                                @ciudad.Nombre
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @if (_cargandoCiudades)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+
+                    @if (_falloCargaCiudades)
+                    {
+                        <MudButton OnClick="() => CambiarProvincia(_modelo.IdProvincia)"
+                                   Color="Color.Primary">
+                            Reintentar carga de ciudades
+                        </MudButton>
+                    }
+
+                    <MudSelect T="int?"
+                               @bind-Value="_modelo.IdCategoria"
+                               Label="Categoría"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Seleccioná una categoría.">
+                        @foreach (CategoriaResponse categoria in _categorias)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)categoria.Id)">
+                                @categoria.Nombre
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.Calle"
+                                  Label="Calle"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Ingresá la calle." />
+
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.NumCalle"
+                                  Label="Número de calle"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Ingresá el número de calle." />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Disabled="_procesando || _cargandoCiudades"
+                               OnClick="Enviar">
+                        @if (_procesando)
+                        {
+                            <span>Enviando...</span>
+                        }
+                        else if (IdTienda is not null)
+                        {
+                            <span>Reenviar solicitud</span>
+                        }
+                        else
+                        {
+                            <span>Enviar solicitud</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        }
+
+        <MudButton Href="/solicitudes-tiendas" Disabled="_procesando">
+            Volver al listado
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? IdTienda { get; set; }
+
+    private string _titulo = "Solicitar alta de tienda";
+    private readonly SolicitarAltaTiendaViewModel _modelo = new SolicitarAltaTiendaViewModel();
+    private List<ProvinciaResponse> _provincias = new List<ProvinciaResponse>();
+    private List<CiudadResponse> _ciudades = new List<CiudadResponse>();
+    private List<CategoriaResponse> _categorias = new List<CategoriaResponse>();
+    private MudForm _formulario = null!;
+    private bool _cargando = true;
+    private bool _datosCargados;
+    private bool _cargandoCiudades;
+    private bool _falloCargaCiudades;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _cargando = true;
+        _datosCargados = false;
+        _falloCargaCiudades = false;
+        _error = null;
+
+        _modelo.Nombre = string.Empty;
+        _modelo.Calle = string.Empty;
+        _modelo.NumCalle = string.Empty;
+        _modelo.IdProvincia = null;
+        _modelo.IdCiudad = null;
+        _modelo.IdCategoria = null;
+        _ciudades.Clear();
+
+        if (IdTienda is not null)
+        {
+            _titulo = "Modificar solicitud de tienda";
+        }
+        else
+        {
+            _titulo = "Solicitar alta de tienda";
+        }
+
+        try
+        {
+            _provincias = await ProvinciaService.ObtenerProvincias();
+            _categorias = await CategoriaService.ObtenerCategorias();
+
+            if (IdTienda is not null)
+            {
+                DetalleSolicitudTiendaResponse solicitud = await TiendaService.ObtenerSolicitudRechazada(IdTienda.Value);
+
+                _modelo.Nombre = solicitud.Nombre;
+                _modelo.Calle = solicitud.Calle;
+                _modelo.NumCalle = solicitud.NumCalle;
+                _modelo.IdCategoria = solicitud.IdCategoria;
+
+                await CambiarProvincia(solicitud.IdProvincia);
+
+                if (_falloCargaCiudades)
+                {
+                    return;
+                }
+
+                _modelo.IdCiudad = solicitud.IdCiudad;
+            }
+
+            _datosCargados = true;
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e, "No se pudieron cargar los datos del formulario.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task CambiarProvincia(int? idProvincia)
+    {
+        if (_cargandoCiudades || _procesando)
+        {
+            return;
+        }
+
+        _modelo.IdProvincia = idProvincia;
+        _modelo.IdCiudad = null;
+        _ciudades.Clear();
+        _error = null;
+        _falloCargaCiudades = false;
+
+        if (idProvincia is null)
+        {
+            return;
+        }
+
+        _cargandoCiudades = true;
+
+        try
+        {
+            _ciudades = await ProvinciaService.ObtenerCiudadesPorProvincia(idProvincia.Value);
+        }
+        catch (HttpRequestException e)
+        {
+            _falloCargaCiudades = true;
+            MostrarError(e, "No se pudieron cargar las ciudades.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _falloCargaCiudades = true;
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargandoCiudades = false;
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando || _cargando || _cargandoCiudades || !_datosCargados)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            if (_modelo.IdProvincia is null || _modelo.IdCiudad is null || _modelo.IdCategoria is null)
+            {
+                _error = "Seleccioná una provincia, una ciudad y una categoría.";
+                return;
+            }
+
+            if (IdTienda is not null)
+            {
+                ReenviarSolicitudTiendaRequest request = new ReenviarSolicitudTiendaRequest(_modelo.Nombre, _modelo.Calle, _modelo.NumCalle, _modelo.IdCiudad.Value, _modelo.IdCategoria.Value);
+
+                await TiendaService.ReenviarSolicitud(IdTienda.Value, request);
+            }
+            else
+            {
+                SolicitarAltaTiendaRequest request = new SolicitarAltaTiendaRequest(_modelo.Nombre, _modelo.Calle, _modelo.NumCalle, _modelo.IdCiudad.Value, _modelo.IdCategoria.Value);
+
+                await TiendaService.SolicitarAlta(request);
+            }
+
+            Navigation.NavigateTo("/solicitudes-tiendas");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e, "No se pudo enviar la solicitud de la tienda.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e, string mensaje)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            SesionUsuarioService.Limpiar();
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _datosCargados = false;
+            _error = "La solicitud no está disponible para modificar. Volvé al listado para consultar su estado.";
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para realizar esta operación.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = mensaje;
+        }
+    }
+}
