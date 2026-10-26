@@ -33,9 +33,33 @@
         }
         else if (_tiendaActiva is not null)
         {
-            <MudText Typo="Typo.h5" HtmlTag="h1">
-                @_tiendaActiva.Nombre
-            </MudText>
+            <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="py-6">
+                <MudStack Spacing="8">
+                    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+                        @_tiendaActiva.Nombre
+                    </MudText>
+
+                    <MudStack Spacing="6" Class="mt-6">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true">
+                            Gestionar promociones
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true">
+                            Gestionar empleados
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   FullWidth="true">
+                            Cancelar relaciones con TiendaCry
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudContainer>
         }
     </MudStack>
 </MudContainer>
