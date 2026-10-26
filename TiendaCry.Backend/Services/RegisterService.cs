@@ -26,7 +26,7 @@ namespace TiendaCry.Backend.Services
             _sesionRepository = sesionRepository;
         }
 
-        public async Task<RegisterResponse> Registrarse(
+        public async Task<AutenticacionResponse> Registrarse(
             RegisterRequest request)
         {
             if (!Validaciones.EstanDatosBien(
@@ -110,7 +110,7 @@ namespace TiendaCry.Backend.Services
 
             await _sesionRepository.Crear(sesion);
 
-            return new RegisterResponse(token, refreshToken, sesion.FechaVencimiento);
+            return new AutenticacionResponse(token, refreshToken);
         }
     }
 }

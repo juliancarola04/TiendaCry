@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TiendaCry.Shared.DTO.Auth.Request;
@@ -35,7 +36,7 @@ public class AutenticacionService
     {
         using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Post, "api/auth/enviar-verificacion-email"));
 
-        await ComprobarRespuesta(respuesta, "No se pudo enviar el correo de verificación.");
+        await ValidarRespuesta(respuesta, "No se pudo enviar el correo de verificación.");
     }
 
     public async Task ModificarEmail(ModificarEmailRequest request)
@@ -45,57 +46,35 @@ public class AutenticacionService
             Content = JsonContent.Create(request)
         });
 
-        await ComprobarRespuesta(respuesta, "No se pudo modificar el correo.");
+        await ValidarRespuesta(respuesta, "No se pudo modificar el correo.");
     }
 
     public async Task Registrarse(RegisterRequest request)
     {
         using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/register", request);
 
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
+        await ValidarRespuesta(respuesta, "No se pudo crear la cuenta.");
 
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo crear la cuenta.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
-
-        RegisterResponse? registro = await respuesta.Content.ReadFromJsonAsync<RegisterResponse>();
+        AutenticacionResponse? registro = await respuesta.Content.ReadFromJsonAsync<AutenticacionResponse>();
 
         if (registro is null || string.IsNullOrWhiteSpace(registro.Token) || string.IsNullOrWhiteSpace(registro.RefreshToken))
         {
             throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
         }
 
-        LoginResponse sesion = new LoginResponse(registro.Token, registro.RefreshToken, registro.SesionExpira);
-
-        await _almacenamientoTokensService.Guardar(sesion);
+        await _almacenamientoTokensService.Guardar(registro);
     }
 
     public async Task SolicitarRecuperacionContrasena(SolicitarRecuperacionContrasenaRequest request)
     {
         using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/solicitar-recuperacion-contrasena", request);
 
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo solicitar la recuperación de contraseña.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
+        await ValidarRespuesta(respuesta, "No se pudo solicitar la recuperación de contraseña.");
     }
 
     public async Task CerrarSesion()
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+        AutenticacionResponse? sesion = await _almacenamientoTokensService.Obtener();
 
         if (sesion is not null)
         {
@@ -103,17 +82,7 @@ public class AutenticacionService
 
             using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/logout", request);
 
-            if (!respuesta.IsSuccessStatusCode)
-            {
-                string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-                if (string.IsNullOrWhiteSpace(mensaje))
-                {
-                    mensaje = "No se pudo cerrar la sesión.";
-                }
-
-                throw new InvalidOperationException(mensaje);
-            }
+            await ValidarRespuesta(respuesta, "No se pudo cerrar la sesión.");
         }
 
         _almacenamientoTokensService.Limpiar();
@@ -123,19 +92,9 @@ public class AutenticacionService
     {
         using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/login", request);
 
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
+        await ValidarRespuesta(respuesta, "No se pudo iniciar sesión.");
 
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo iniciar sesión.";
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
-
-        LoginResponse? sesion = await respuesta.Content.ReadFromJsonAsync<LoginResponse>();
+        AutenticacionResponse? sesion = await respuesta.Content.ReadFromJsonAsync<AutenticacionResponse>();
 
         if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token) || string.IsNullOrWhiteSpace(sesion.RefreshToken))
         {
@@ -149,7 +108,7 @@ public class AutenticacionService
     {
         HttpResponseMessage respuesta = await EnviarConToken(crearSolicitud);
 
-        if (respuesta.StatusCode != System.Net.HttpStatusCode.Unauthorized)
+        if (respuesta.StatusCode != HttpStatusCode.Unauthorized)
         {
             return respuesta;
         }
@@ -160,12 +119,12 @@ public class AutenticacionService
 
         respuesta = await EnviarConToken(crearSolicitud);
 
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
         {
             _almacenamientoTokensService.Limpiar();
             respuesta.Dispose();
 
-            throw new HttpRequestException("La sesión ya no es válida.", null, System.Net.HttpStatusCode.Unauthorized);
+            throw new HttpRequestException("La sesión ya no es válida.", null, HttpStatusCode.Unauthorized);
         }
 
         return respuesta;
@@ -173,13 +132,13 @@ public class AutenticacionService
 
     private async Task<HttpResponseMessage> EnviarConToken(Func<HttpRequestMessage> crearSolicitud)
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+        AutenticacionResponse? sesion = await _almacenamientoTokensService.Obtener();
 
         if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token) || string.IsNullOrWhiteSpace(sesion.RefreshToken))
         {
             _almacenamientoTokensService.Limpiar();
 
-            throw new HttpRequestException("No hay una sesión válida guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+            throw new HttpRequestException("No hay una sesión válida guardada.", null, HttpStatusCode.Unauthorized);
         }
 
         using HttpRequestMessage solicitud = crearSolicitud();
@@ -190,27 +149,27 @@ public class AutenticacionService
 
     private async Task RenovarSesion()
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+        AutenticacionResponse? sesion = await _almacenamientoTokensService.Obtener();
 
         if (sesion is null || string.IsNullOrWhiteSpace(sesion.RefreshToken))
         {
             _almacenamientoTokensService.Limpiar();
 
-            throw new HttpRequestException("No hay una sesión válida guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+            throw new HttpRequestException("No hay una sesión válida guardada.", null, HttpStatusCode.Unauthorized);
         }
 
         RefreshRequest request = new RefreshRequest(sesion.RefreshToken);
 
         using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/refresh", request);
 
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
         {
             _almacenamientoTokensService.Limpiar();
         }
 
         respuesta.EnsureSuccessStatusCode();
 
-        LoginResponse? nuevaSesion = await respuesta.Content.ReadFromJsonAsync<LoginResponse>();
+        AutenticacionResponse? nuevaSesion = await respuesta.Content.ReadFromJsonAsync<AutenticacionResponse>();
 
         if (nuevaSesion is null || string.IsNullOrWhiteSpace(nuevaSesion.Token) || string.IsNullOrWhiteSpace(nuevaSesion.RefreshToken))
         {
@@ -220,13 +179,8 @@ public class AutenticacionService
         await _almacenamientoTokensService.Guardar(nuevaSesion);
     }
 
-    private async Task ComprobarRespuesta(HttpResponseMessage respuesta, string mensajeError)
+    private async Task ValidarRespuesta(HttpResponseMessage respuesta, string mensajeError)
     {
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
-
         if (!respuesta.IsSuccessStatusCode)
         {
             string mensaje = await respuesta.Content.ReadAsStringAsync();

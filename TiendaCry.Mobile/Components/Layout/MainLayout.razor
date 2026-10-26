@@ -62,7 +62,7 @@ else if (_autorizado)
 
         try
         {
-            LoginResponse? sesion = await AlmacenamientoTokensService.Obtener();
+            AutenticacionResponse? sesion = await AlmacenamientoTokensService.Obtener();
 
             if (sesion is null)
             {

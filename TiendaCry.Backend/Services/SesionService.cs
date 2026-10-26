@@ -43,7 +43,7 @@ namespace TiendaCry.Backend.Services
             }
         }
 
-        public async Task<LoginResponse> Renovar(string refreshToken)
+        public async Task<AutenticacionResponse> Renovar(string refreshToken)
         {
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
@@ -63,6 +63,7 @@ namespace TiendaCry.Backend.Services
             var nuevoRefreshToken = _tokenService.CrearRefreshToken();
 
             sesion.RefreshToken = _tokenService.CalcularHash(nuevoRefreshToken);
+            sesion.FechaVencimiento = ahora.AddDays(30);
 
             try
             {
@@ -73,7 +74,7 @@ namespace TiendaCry.Backend.Services
                 throw new SesionInvalidaException();
             }
 
-            return new LoginResponse(token, nuevoRefreshToken, sesion.FechaVencimiento);
+            return new AutenticacionResponse(token, nuevoRefreshToken);
         }
     }
 }

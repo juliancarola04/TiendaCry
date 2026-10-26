@@ -38,7 +38,7 @@ namespace TiendaCry.Backend.Services
                 throw new CredencialesInvalidasException();
             }
 
-            var token = await GenerarTokenAsync(idUsuario);
+            string token = await GenerarTokenAsync(usuario);
 
             var link = new UriBuilder(_settings.UrlVerificacion)
             {
@@ -82,14 +82,8 @@ namespace TiendaCry.Backend.Services
             }
         }
 
-        public async Task<string> GenerarTokenAsync(int idUsuario)
+        private async Task<string> GenerarTokenAsync(Usuario usuario)
         {
-            var usuario = await _usuarioRepository.BuscarPorId(idUsuario);
-
-            if (usuario is null)
-            {
-                throw new CredencialesInvalidasException();
-            }
 
             if (usuario.EmailVerificado)
             {

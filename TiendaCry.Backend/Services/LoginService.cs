@@ -19,7 +19,7 @@ namespace TiendaCry.Backend.Services
             _sesionRepository = sesionRepository;
         }
 
-        public async Task<LoginResponse> Login(LoginRequest request)
+        public async Task<AutenticacionResponse> Login(LoginRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Username)
                 || string.IsNullOrWhiteSpace(request.Password))
@@ -60,7 +60,7 @@ namespace TiendaCry.Backend.Services
 
             await _sesionRepository.Crear(sesion);
 
-            return new LoginResponse(token, refreshToken, sesion.FechaVencimiento);
+            return new AutenticacionResponse(token, refreshToken);
         }
     }
 }

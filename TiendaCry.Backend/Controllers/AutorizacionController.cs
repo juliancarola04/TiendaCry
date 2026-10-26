@@ -55,7 +55,7 @@ namespace TiendaCry.Backend.Controllers
 
         [HttpPost("refresh")]
         [AllowAnonymous]
-        public async Task<ActionResult<LoginResponse>> Renovar(RefreshRequest request)
+        public async Task<ActionResult<AutenticacionResponse>> Renovar(RefreshRequest request)
         {
             try
             {
@@ -192,7 +192,7 @@ namespace TiendaCry.Backend.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<ActionResult<RegisterResponse>> Register(
+        public async Task<ActionResult<AutenticacionResponse>> Register(
             RegisterRequest registerRequest)
         {
             try
@@ -213,7 +213,7 @@ namespace TiendaCry.Backend.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<ActionResult<LoginResponse>> Login(
+        public async Task<ActionResult<AutenticacionResponse>> Login(
             LoginRequest loginRequest)
         {
             try

@@ -13,14 +13,14 @@ public class AlmacenamientoTokensService
         _jsRuntime = jsRuntime;
     }
 
-    public async Task Guardar(LoginResponse response)
+    public async Task Guardar(AutenticacionResponse response)
     {
         string contenido = JsonSerializer.Serialize(response);
 
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "sesion_usuario", contenido);
     }
 
-    public async Task<LoginResponse?> Obtener()
+    public async Task<AutenticacionResponse?> Obtener()
     {
         string? contenido = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "sesion_usuario");
 
@@ -31,7 +31,7 @@ public class AlmacenamientoTokensService
 
         try
         {
-            return JsonSerializer.Deserialize<LoginResponse>(contenido);
+            return JsonSerializer.Deserialize<AutenticacionResponse>(contenido);
         }
         catch (JsonException)
         {

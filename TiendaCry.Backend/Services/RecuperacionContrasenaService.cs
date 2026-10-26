@@ -98,16 +98,13 @@ public class RecuperacionContrasenaService
 
         string link = new UriBuilder(_settings.UrlRecuperacionContrasena)
         {
-            Query = $"token={token}",
-            Fragment = string.Empty
+            Query = $"token={token}"
         }.Uri.AbsoluteUri;
-
-        string linkHtml = WebUtility.HtmlEncode(link);
-
+        
         string contenidoHtml =
             "<h1>Restablecé tu contraseña</h1>" +
             "<p>Para elegir una nueva contraseña, abrí el siguiente link.</p>" +
-            $"<p><a href=\"{linkHtml}\">Restablecer mi contraseña</a></p>" +
+            $"<p><a href=\"{link}\">Restablecer mi contraseña</a></p>" +
             "<p>El link vence en 30 minutos.</p>";
 
         await _tokenEmailRepository.GuardarAsync(tokenEmail);
