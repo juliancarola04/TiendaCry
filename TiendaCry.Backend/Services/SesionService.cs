@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Excepciones;
+using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Repositories;
 using TiendaCry.Shared.DTO.Auth.Response;
 
@@ -9,11 +10,13 @@ namespace TiendaCry.Backend.Services
     {
         private readonly ISesionUsuarioRepository _sesionRepository;
         private readonly ITokenService _tokenService;
+        private readonly IUsuarioRepository _usuarioRepository;
 
-        public SesionService(ISesionUsuarioRepository sesionRepository, ITokenService tokenService)
+        public SesionService(ISesionUsuarioRepository sesionRepository, ITokenService tokenService, IUsuarioRepository usuarioRepository)
         {
             _sesionRepository = sesionRepository;
             _tokenService = tokenService;
+            _usuarioRepository = usuarioRepository;
         }
 
         public async Task Cerrar(string refreshToken)
@@ -23,8 +26,8 @@ namespace TiendaCry.Backend.Services
                 throw new DatosLlegaronErradosException("El refresh token es obligatorio.");
             }
 
-            var codigo = _tokenService.CalcularHash(refreshToken);
-            var sesion = await _sesionRepository.BuscarPorRefreshToken(codigo);
+            string codigo = _tokenService.CalcularHash(refreshToken);
+            SesionUsuario? sesion = await _sesionRepository.BuscarPorRefreshToken(codigo);
 
             if (sesion is null || sesion.FechaRevocacion is not null)
             {
@@ -50,17 +53,19 @@ namespace TiendaCry.Backend.Services
                 throw new DatosLlegaronErradosException("El refresh token es obligatorio.");
             }
 
-            var codigo = _tokenService.CalcularHash(refreshToken);
-            var sesion = await _sesionRepository.BuscarPorRefreshToken(codigo);
-            var ahora = DateTime.UtcNow;
+            string codigo = _tokenService.CalcularHash(refreshToken);
+            SesionUsuario? sesion = await _sesionRepository.BuscarPorRefreshToken(codigo);
+            DateTime ahora = DateTime.UtcNow;
 
             if (sesion is null || sesion.FechaRevocacion is not null || sesion.FechaVencimiento <= ahora || sesion.Usuario.EstadoUsuario.Nombre != "Activo")
             {
                 throw new SesionInvalidaException();
             }
 
-            var token = _tokenService.CrearToken(sesion.Usuario);
-            var nuevoRefreshToken = _tokenService.CrearRefreshToken();
+            List<string> roles = await _usuarioRepository.ObtenerRoles(sesion.IdUsuario);
+
+            string token = _tokenService.CrearToken(sesion.Usuario, roles);
+            string nuevoRefreshToken = _tokenService.CrearRefreshToken();
 
             sesion.RefreshToken = _tokenService.CalcularHash(nuevoRefreshToken);
             sesion.FechaVencimiento = ahora.AddDays(30);

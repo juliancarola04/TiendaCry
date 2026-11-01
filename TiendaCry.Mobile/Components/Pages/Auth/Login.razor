@@ -1,11 +1,11 @@
 @page "/login"
 @layout AutenticacionLayout
 @using TiendaCry.Shared.DTO.Auth.Request
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Shared.ViewModels.Auth
 @using TiendaCry.Mobile.Services
 @inject AutenticacionService AutenticacionService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <PageTitle>Iniciar sesión</PageTitle>
 
@@ -95,10 +95,11 @@
 
             await AutenticacionService.IniciarSesion(request);
 
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
             _modelo.Contrasena = string.Empty;
 
-            if (usuario.EmailVerificado)
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
+
+            if (ClaimsUsuario.TieneEmailVerificado(estado.User))
             {
                 Navigation.NavigateTo("/");
             }

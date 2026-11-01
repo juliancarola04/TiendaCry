@@ -171,25 +171,6 @@ namespace TiendaCry.Backend.Controllers
             }
         }
 
-        [HttpGet("usuario-actual")]
-        [Authorize]
-        public async Task<ActionResult<UsuarioActualResponse>> ObtenerUsuarioActual()
-        {
-            try
-            {
-                var sub = User.FindFirst("sub")?.Value;
-                int idUsuario = Convert.ToInt32(sub);
-
-                var response = await _usuarioService.ObtenerActual(idUsuario);
-
-                return Ok(response);
-            }
-            catch (CredencialesInvalidasException e)
-            {
-                return Unauthorized(e.Message);
-            }
-        }
-
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<ActionResult<AutenticacionResponse>> Register(

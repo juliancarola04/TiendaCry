@@ -1,9 +1,10 @@
 @page "/solicitudes-tiendas"
+@attribute [Authorize]
+@layout MainLayout
 @using System.Net
 @using TiendaCry.Shared.DTO.Tienda.Response
 @using TiendaCry.Web.Services
 @inject TiendaService TiendaService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>Solicitudes de tienda</PageTitle>
@@ -126,7 +127,6 @@
         {
             if (e.StatusCode == HttpStatusCode.Unauthorized)
             {
-                SesionUsuarioService.Limpiar();
                 Navigation.NavigateTo("/login");
             }
             else if (e.StatusCode == HttpStatusCode.Forbidden)

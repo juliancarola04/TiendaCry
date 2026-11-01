@@ -1,5 +1,7 @@
 @page "/solicitar-alta-tienda"
 @page "/modificar-solicitud-tienda/{IdTienda:int}"
+@attribute [Authorize]
+@layout MainLayout
 @using System.Net
 @using TiendaCry.Shared.DTO.Categoria.Response
 @using TiendaCry.Shared.DTO.Ciudad.Response
@@ -11,7 +13,6 @@
 @inject ProvinciaService ProvinciaService
 @inject CategoriaService CategoriaService
 @inject TiendaService TiendaService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>@_titulo</PageTitle>
@@ -337,7 +338,6 @@
     {
         if (e.StatusCode == HttpStatusCode.Unauthorized)
         {
-            SesionUsuarioService.Limpiar();
             Navigation.NavigateTo("/login");
         }
         else if (e.StatusCode == HttpStatusCode.NotFound)

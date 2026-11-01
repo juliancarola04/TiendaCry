@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
 using TiendaCry.Backend.Options;
 using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Data;
@@ -61,6 +62,7 @@ namespace TiendaCry.Backend
                         ValidIssuer = jwtSettings.Issuer,
                         ValidAudience = jwtSettings.Audience,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+                        RoleClaimType = ClaimTypes.Role,
                         ClockSkew = TimeSpan.Zero
                     };
 

@@ -1,13 +1,13 @@
 @page "/modificar-correo"
+@attribute [Authorize]
 @layout AutenticacionLayout
 @using System.Net
 @using TiendaCry.Shared.DTO.Auth.Request
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Shared.ViewModels.Auth
 @using TiendaCry.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <PageTitle>Modificar correo</PageTitle>
 
@@ -66,16 +66,18 @@
     {
         try
         {
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
-            if (usuario.EmailVerificado)
+            if (estado.User.Identity?.IsAuthenticated != true)
             {
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("/login");
                 return;
             }
 
-            _modelo.Email = usuario.Email;
+            if (ClaimsUsuario.TieneEmailVerificado(estado.User))
+            {
+                Navigation.NavigateTo("/");
+            }
         }
         catch (HttpRequestException e)
         {
@@ -114,9 +116,6 @@
 
             await AutenticacionService.ModificarEmail(request);
 
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
-
             Navigation.NavigateTo("/verificar-correo");
         }
         catch (HttpRequestException e)
@@ -137,7 +136,6 @@
     {
         if (e.StatusCode == HttpStatusCode.Unauthorized)
         {
-            SesionUsuarioService.Limpiar();
             Navigation.NavigateTo("/login");
         }
         else

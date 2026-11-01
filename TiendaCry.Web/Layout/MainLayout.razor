@@ -1,10 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @using System.Net
-@using TiendaCry.Shared.DTO.Auth.Response
-@using TiendaCry.Web.Services
-@inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -27,7 +24,7 @@ else if (!string.IsNullOrWhiteSpace(_error))
         </MudButton>
     </MudStack>
 }
-else if (SesionUsuarioService.UsuarioActual?.EmailVerificado == true)
+else if (_autorizado)
 {
     <div class="page">
         @*
@@ -50,6 +47,7 @@ else if (SesionUsuarioService.UsuarioActual?.EmailVerificado == true)
 
 @code {
     private bool _cargando = true;
+    private bool _autorizado;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
@@ -60,23 +58,31 @@ else if (SesionUsuarioService.UsuarioActual?.EmailVerificado == true)
     private async Task CargarSesion()
     {
         _cargando = true;
+        _autorizado = false;
         _error = null;
 
         try
         {
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
-            if (!usuario.EmailVerificado)
+            if (estado.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (!ClaimsUsuario.TieneEmailVerificado(estado.User))
             {
                 Navigation.NavigateTo("/verificar-correo");
+                return;
             }
+
+            _autorizado = true;
         }
         catch (HttpRequestException e)
         {
             if (e.StatusCode == HttpStatusCode.Unauthorized)
             {
-                SesionUsuarioService.Limpiar();
                 Navigation.NavigateTo("/login");
             }
             else

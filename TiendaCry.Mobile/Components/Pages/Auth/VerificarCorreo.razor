@@ -1,10 +1,11 @@
 @page "/verificar-correo"
+@attribute [Authorize]
 @layout AutenticacionLayout
 @using System.Net
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Mobile.Services
 @inject AutenticacionService AutenticacionService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <PageTitle>Verificá tu correo</PageTitle>
 
@@ -17,13 +18,6 @@
         Para continuar, confirmá tu dirección desde el link del correo.
         Después volvé a la app.
     </MudText>
-
-    @if (_usuario is not null)
-    {
-        <MudText Align="Align.Center">
-            @_usuario.Email
-        </MudText>
-    }
 
     @if (!string.IsNullOrWhiteSpace(_mensaje))
     {
@@ -51,7 +45,7 @@
                Color="Color.Primary"
                FullWidth="true"
                Disabled="_procesando"
-               OnClick="ComprobarVerificacion">
+               OnClick="@(() => ComprobarVerificacion(true))">
         Ya verifiqué mi correo
     </MudButton>
 
@@ -65,17 +59,16 @@
 </MudStack>
 
 @code {
-    private UsuarioActualResponse? _usuario;
     private bool _procesando;
     private string? _mensaje;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
     {
-        await ComprobarVerificacion();
+        await ComprobarVerificacion(false);
     }
 
-    private async Task ComprobarVerificacion()
+    private async Task ComprobarVerificacion(bool renovarSesion)
     {
         if (_procesando)
         {
@@ -88,9 +81,20 @@
 
         try
         {
-            _usuario = await AutenticacionService.ObtenerUsuarioActual();
+            if (renovarSesion)
+            {
+                await AutenticacionService.RenovarSesion();
+            }
 
-            if (_usuario.EmailVerificado)
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
+
+            if (estado.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (ClaimsUsuario.TieneEmailVerificado(estado.User))
             {
                 Navigation.NavigateTo("/");
             }

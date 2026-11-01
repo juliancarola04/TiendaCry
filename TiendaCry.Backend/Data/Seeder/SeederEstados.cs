@@ -15,7 +15,6 @@ namespace TiendaCry.Backend.Data.Seeder
         public async Task SeedAsync()
         {
             await SeedEstadosUsuarioAsync();
-            await SeedEstadosSocioAsync();
             await SeedEstadosCuponAsync();
             await SeedEstadosUsuarioTiendaAsync();
             await SeedEstadosTiendaAsync();
@@ -27,31 +26,13 @@ namespace TiendaCry.Backend.Data.Seeder
             if (await _context.EstadosUsuario.AnyAsync())
                 return;
 
-            var estados = new[]
+            EstadoUsuario[] estados = new EstadoUsuario[]
             {
                 new EstadoUsuario { Nombre = "Activo" },
-                new EstadoUsuario { Nombre = "Bloqueado" },
                 new EstadoUsuario { Nombre = "Baja" }
             };
 
             _context.EstadosUsuario.AddRange(estados);
-
-            await _context.SaveChangesAsync();
-        }
-
-        private async Task SeedEstadosSocioAsync()
-        {
-            if (await _context.EstadosSocio.AnyAsync())
-                return;
-
-            var estados = new[]
-            {
-                new EstadoSocio { Nombre = "Habilitado" },
-                new EstadoSocio { Nombre = "Suspendido" },
-                new EstadoSocio { Nombre = "Baja" }
-            };
-
-            _context.EstadosSocio.AddRange(estados);
 
             await _context.SaveChangesAsync();
         }
@@ -61,7 +42,7 @@ namespace TiendaCry.Backend.Data.Seeder
             if (await _context.EstadosCupon.AnyAsync())
                 return;
 
-            var estados = new[]
+            EstadoCupon[] estados = new EstadoCupon[]
             {
                 new EstadoCupon { Nombre = "Activo" },
                 new EstadoCupon { Nombre = "Utilizado" },
@@ -79,10 +60,9 @@ namespace TiendaCry.Backend.Data.Seeder
             if (await _context.EstadosUsuarioTienda.AnyAsync())
                 return;
 
-            var estados = new[]
+            EstadoUsuarioTienda[] estados = new EstadoUsuarioTienda[]
             {
                 new EstadoUsuarioTienda { Nombre = "Activo" },
-                new EstadoUsuarioTienda { Nombre = "Suspendido" },
                 new EstadoUsuarioTienda { Nombre = "Baja" }
             };
 
@@ -96,12 +76,11 @@ namespace TiendaCry.Backend.Data.Seeder
             if (await _context.EstadosTienda.AnyAsync())
                 return;
 
-            var estados = new[]
+            EstadoTienda[] estados = new EstadoTienda[]
             {
                 new EstadoTienda { Nombre = "PendienteRevision" },
                 new EstadoTienda { Nombre = "Aprobada" },
                 new EstadoTienda { Nombre = "Rechazada" },
-                new EstadoTienda { Nombre = "Suspendida" },
                 new EstadoTienda { Nombre = "Baja" }
             };
 
@@ -115,12 +94,11 @@ namespace TiendaCry.Backend.Data.Seeder
             if (await _context.EstadosPromocion.AnyAsync())
                 return;
 
-            var estados = new[]
+            EstadoPromocion[] estados = new EstadoPromocion[]
             {
                 new EstadoPromocion { Nombre = "PendienteRevision" },
                 new EstadoPromocion { Nombre = "Aprobada" },
                 new EstadoPromocion { Nombre = "Rechazada" },
-                new EstadoPromocion { Nombre = "Suspendida" },
                 new EstadoPromocion { Nombre = "Cancelada" }
             };
 
@@ -130,4 +108,3 @@ namespace TiendaCry.Backend.Data.Seeder
         }
     }
 }
-

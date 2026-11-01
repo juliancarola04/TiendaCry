@@ -18,7 +18,6 @@ namespace TiendaCry.Backend.Data
             modelBuilder.ApplyConfiguration(new EstadoUsuarioConfiguracion());
             modelBuilder.ApplyConfiguration(new ProvinciaConfiguracion());
             modelBuilder.ApplyConfiguration(new CiudadConfiguracion());
-            modelBuilder.ApplyConfiguration(new EstadoSocioConfiguracion());
             modelBuilder.ApplyConfiguration(new EstadoMembresiaConfiguracion());
             modelBuilder.ApplyConfiguration(new EstadoCuponConfiguracion());
             modelBuilder.ApplyConfiguration(new EstadoPagoMembresiaConfiguracion());
@@ -45,7 +44,6 @@ namespace TiendaCry.Backend.Data
         public DbSet<EstadoUsuario> EstadosUsuario{ get; set; }
         public DbSet<Provincia> Provincias { get; set; }
         public DbSet<Ciudad> Ciudades { get; set; }
-        public DbSet<EstadoSocio> EstadosSocio { get; set; }
         public DbSet<EstadoMembresia> EstadosMembresia { get; set; }
         public DbSet<EstadoCupon> EstadosCupon { get; set; }
         public DbSet<EstadoPagoMembresia> EstadosPagoMembresia { get; set; }

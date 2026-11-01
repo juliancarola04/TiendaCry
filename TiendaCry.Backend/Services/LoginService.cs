@@ -28,17 +28,14 @@ namespace TiendaCry.Backend.Services
                     "El usuario y la contraseña son obligatorios.");
             }
 
-            var usuario = await _usuarioRepository
-                .BuscarPorUsername(request.Username.Trim());
+            Usuario? usuario = await _usuarioRepository.BuscarPorUsername(request.Username.Trim());
 
             if (usuario is null)
             {
                 throw new CredencialesInvalidasException();
             }
 
-            var contrasenaCorrecta = BCrypt.Net.BCrypt.EnhancedVerify(
-                request.Password,
-                usuario.Contrasena);
+            bool contrasenaCorrecta = BCrypt.Net.BCrypt.EnhancedVerify(request.Password, usuario.Contrasena);
 
             if (!contrasenaCorrecta
                 || usuario.EstadoUsuario.Nombre != "Activo")
@@ -46,11 +43,13 @@ namespace TiendaCry.Backend.Services
                 throw new CredencialesInvalidasException();
             }
 
-            var token = _tokenService.CrearToken(usuario);
-            var refreshToken = _tokenService.CrearRefreshToken();
-            var ahora = DateTime.UtcNow;
+            List<string> roles = await _usuarioRepository.ObtenerRoles(usuario.Id);
 
-            var sesion = new SesionUsuario
+            string token = _tokenService.CrearToken(usuario, roles);
+            string refreshToken = _tokenService.CrearRefreshToken();
+            DateTime ahora = DateTime.UtcNow;
+
+            SesionUsuario sesion = new SesionUsuario
             {
                 IdUsuario = usuario.Id,
                 RefreshToken = _tokenService.CalcularHash(refreshToken),

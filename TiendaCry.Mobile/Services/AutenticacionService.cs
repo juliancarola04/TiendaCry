@@ -1,3 +1,4 @@
+using Microsoft.IdentityModel.JsonWebTokens;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -11,25 +12,42 @@ public class AutenticacionService
     private readonly HttpClient _httpClient;
     private readonly AlmacenamientoTokensService _almacenamientoTokensService;
 
+    public event Action? SesionCambio;
+
     public AutenticacionService(IHttpClientFactory httpClientFactory, AlmacenamientoTokensService almacenamientoTokensService)
     {
         _httpClient = httpClientFactory.CreateClient("TiendaCry");
         _almacenamientoTokensService = almacenamientoTokensService;
     }
 
-    public async Task<UsuarioActualResponse> ObtenerUsuarioActual()
+    public async Task<string?> ObtenerTokenVigente()
     {
-        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
-        respuesta.EnsureSuccessStatusCode();
+        AutenticacionResponse? sesion = await _almacenamientoTokensService.Obtener();
 
-        UsuarioActualResponse? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioActualResponse>();
-
-        if (usuario is null)
+        if (sesion is null)
         {
-            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
+            return null;
         }
 
-        return usuario;
+        JsonWebTokenHandler handler = new JsonWebTokenHandler();
+
+        if (string.IsNullOrWhiteSpace(sesion.Token) || !handler.CanReadToken(sesion.Token))
+        {
+            LimpiarSesion();
+
+            return null;
+        }
+
+        JsonWebToken jwt = handler.ReadJsonWebToken(sesion.Token);
+
+        if (jwt.ValidTo <= DateTime.UtcNow)
+        {
+            await RenovarSesion();
+
+            sesion = await _almacenamientoTokensService.Obtener();
+        }
+
+        return sesion?.Token;
     }
 
     public async Task EnviarVerificacionEmail()
@@ -62,7 +80,7 @@ public class AutenticacionService
             throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
         }
 
-        await _almacenamientoTokensService.Guardar(registro);
+        await GuardarSesion(registro);
     }
 
     public async Task SolicitarRecuperacionContrasena(SolicitarRecuperacionContrasenaRequest request)
@@ -85,7 +103,7 @@ public class AutenticacionService
             await ValidarRespuesta(respuesta, "No se pudo cerrar la sesión.");
         }
 
-        _almacenamientoTokensService.Limpiar();
+        LimpiarSesion();
     }
 
     public async Task IniciarSesion(LoginRequest request)
@@ -101,7 +119,7 @@ public class AutenticacionService
             throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
         }
 
-        await _almacenamientoTokensService.Guardar(sesion);
+        await GuardarSesion(sesion);
     }
 
     public async Task<HttpResponseMessage> EnviarAutenticado(Func<HttpRequestMessage> crearSolicitud)
@@ -121,7 +139,7 @@ public class AutenticacionService
 
         if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
         {
-            _almacenamientoTokensService.Limpiar();
+            LimpiarSesion();
             respuesta.Dispose();
 
             throw new HttpRequestException("La sesión ya no es válida.", null, HttpStatusCode.Unauthorized);
@@ -136,7 +154,7 @@ public class AutenticacionService
 
         if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token) || string.IsNullOrWhiteSpace(sesion.RefreshToken))
         {
-            _almacenamientoTokensService.Limpiar();
+            LimpiarSesion();
 
             throw new HttpRequestException("No hay una sesión válida guardada.", null, HttpStatusCode.Unauthorized);
         }
@@ -147,13 +165,13 @@ public class AutenticacionService
         return await _httpClient.SendAsync(solicitud);
     }
 
-    private async Task RenovarSesion()
+    public async Task RenovarSesion()
     {
         AutenticacionResponse? sesion = await _almacenamientoTokensService.Obtener();
 
         if (sesion is null || string.IsNullOrWhiteSpace(sesion.RefreshToken))
         {
-            _almacenamientoTokensService.Limpiar();
+            LimpiarSesion();
 
             throw new HttpRequestException("No hay una sesión válida guardada.", null, HttpStatusCode.Unauthorized);
         }
@@ -164,7 +182,7 @@ public class AutenticacionService
 
         if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
         {
-            _almacenamientoTokensService.Limpiar();
+            LimpiarSesion();
         }
 
         respuesta.EnsureSuccessStatusCode();
@@ -176,7 +194,21 @@ public class AutenticacionService
             throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
         }
 
-        await _almacenamientoTokensService.Guardar(nuevaSesion);
+        await GuardarSesion(nuevaSesion);
+    }
+
+    private async Task GuardarSesion(AutenticacionResponse sesion)
+    {
+        await _almacenamientoTokensService.Guardar(sesion);
+
+        SesionCambio?.Invoke();
+    }
+
+    private void LimpiarSesion()
+    {
+        _almacenamientoTokensService.Limpiar();
+
+        SesionCambio?.Invoke();
     }
 
     private async Task ValidarRespuesta(HttpResponseMessage respuesta, string mensajeError)

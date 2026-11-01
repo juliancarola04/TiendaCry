@@ -20,11 +20,6 @@ namespace TiendaCry.Backend.Data.Configuraciones
                 .HasForeignKey<Socio>(s => s.IdUsuario)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(s => s.EstadoSocio)
-                .WithMany(e => e.Socios)
-                .HasForeignKey(s => s.IdEstadoSocio)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.HasOne(s => s.Ciudad)
                 .WithMany(c => c.Socios)
                 .HasForeignKey(s => s.IdCiudad)

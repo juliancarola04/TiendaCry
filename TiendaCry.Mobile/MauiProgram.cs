@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using TiendaCry.Mobile.Auth;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using TiendaCry.Mobile.Services;
 
@@ -28,6 +30,9 @@ public static class MauiProgram
 			UseCookies = false
 		});
 		builder.Services.AddScoped<AutenticacionService>();
+		builder.Services.AddAuthorizationCore();
+		builder.Services.AddCascadingAuthenticationState();
+		builder.Services.AddScoped<AuthenticationStateProvider, EstadoAutenticacionProvider>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

@@ -1,11 +1,11 @@
 @page "/verificar-correo"
+@attribute [Authorize]
 @layout AutenticacionLayout
 @using System.Net
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <PageTitle>Verificá tu correo</PageTitle>
 
@@ -17,13 +17,6 @@
     <MudText Align="Align.Center">
         Para continuar, confirmá tu dirección desde el link del correo.
     </MudText>
-
-    @if (SesionUsuarioService.UsuarioActual is not null)
-    {
-        <MudText Align="Align.Center">
-            @SesionUsuarioService.UsuarioActual.Email
-        </MudText>
-    }
 
     @if (!string.IsNullOrWhiteSpace(_mensaje))
     {
@@ -51,7 +44,7 @@
                Color="Color.Primary"
                FullWidth="true"
                Disabled="_procesando"
-               OnClick="ComprobarVerificacion">
+               OnClick="@(() => ComprobarVerificacion(true))">
         Ya verifiqué mi correo
     </MudButton>
 
@@ -65,27 +58,42 @@
 </MudStack>
 
 @code {
-    private bool _procesando = true;
+    private bool _procesando;
     private string? _mensaje;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
     {
-        await ComprobarVerificacion();
+        await ComprobarVerificacion(false);
     }
 
-    private async Task ComprobarVerificacion()
+    private async Task ComprobarVerificacion(bool renovarSesion)
     {
+        if (_procesando)
+        {
+            return;
+        }
+
         _procesando = true;
         _error = null;
         _mensaje = null;
 
         try
         {
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
+            if (renovarSesion)
+            {
+                await AutenticacionService.RenovarSesion();
+            }
 
-            if (usuario.EmailVerificado)
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
+
+            if (estado.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (ClaimsUsuario.TieneEmailVerificado(estado.User))
             {
                 Navigation.NavigateTo("/");
             }
@@ -143,7 +151,6 @@
     {
         if (e.StatusCode == HttpStatusCode.Unauthorized)
         {
-            SesionUsuarioService.Limpiar();
             Navigation.NavigateTo("/login");
         }
         else

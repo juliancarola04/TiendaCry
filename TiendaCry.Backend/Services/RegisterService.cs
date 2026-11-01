@@ -40,10 +40,10 @@ namespace TiendaCry.Backend.Services
                     "Todos los campos son obligatorios.");
             }
 
-            var username = request.Username.Trim();
-            var email = request.Email.Trim();
-            var nombre = request.Nombre.Trim();
-            var apellido = request.Apellido.Trim();
+            string username = request.Username.Trim();
+            string email = request.Email.Trim();
+            string nombre = request.Nombre.Trim();
+            string apellido = request.Apellido.Trim();
 
             if (!Validaciones.CumpleLongitudMaxima(username, 30)
                 || !Validaciones.CumpleLongitudMaxima(email, 254)
@@ -72,7 +72,7 @@ namespace TiendaCry.Backend.Services
                     "Ya existe alguien con ese email.");
             }
 
-            var idEstadoActivo = await _repo.ObtenerIdEstadoActivo();
+            int? idEstadoActivo = await _repo.ObtenerIdEstadoActivo();
 
             if (idEstadoActivo is null)
             {
@@ -80,7 +80,7 @@ namespace TiendaCry.Backend.Services
                     "No está configurado el estado Activo de usuario.");
             }
 
-            var usuario = new Usuario
+            Usuario usuario = new Usuario
             {
                 NomUsuario = username,
                 Contrasena = BCrypt.Net.BCrypt.EnhancedHashPassword(
@@ -96,7 +96,9 @@ namespace TiendaCry.Backend.Services
 
             await _repo.Registrarse(usuario);
 
-            string token = _tokenService.CrearToken(usuario);
+            List<string> roles = await _usuarioRepository.ObtenerRoles(usuario.Id);
+
+            string token = _tokenService.CrearToken(usuario, roles);
             string refreshToken = _tokenService.CrearRefreshToken();
             DateTime ahora = DateTime.UtcNow;
 

@@ -1,10 +1,11 @@
 ﻿@page "/"
+@attribute [Authorize]
+@layout MainLayout
 @using System.Net
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Shared.DTO.Tienda.Response
 @using TiendaCry.Web.Services
 @inject TiendaService TiendaService
-@inject SesionUsuarioService SesionUsuarioService
+@inject AuthenticationStateProvider EstadoAutenticacion
 @inject NavigationManager Navigation
 
 <PageTitle>Inicio</PageTitle>
@@ -27,9 +28,13 @@
         }
         else if (_esAdministradorTiendaCry)
         {
-            <MudText Typo="Typo.h5" HtmlTag="h1">
-                Administración de TiendaCry
-            </MudText>
+            <AuthorizeView Roles="@RolesUsuario.AdministradorTiendaCry">
+                <Authorized>
+                    <MudText Typo="Typo.h5" HtmlTag="h1">
+                        Administración de TiendaCry
+                    </MudText>
+                </Authorized>
+            </AuthorizeView>
         }
         else if (_tiendaActiva is not null)
         {
@@ -39,25 +44,29 @@
                         @_tiendaActiva.Nombre
                     </MudText>
 
-                    <MudStack Spacing="6" Class="mt-6">
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   FullWidth="true">
-                            Gestionar promociones
-                        </MudButton>
+                    <AuthorizeView Roles="@RolesUsuario.AdministradorTienda">
+                        <Authorized>
+                            <MudStack Spacing="6" Class="mt-6">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           FullWidth="true">
+                                    Gestionar promociones
+                                </MudButton>
 
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   FullWidth="true">
-                            Gestionar empleados
-                        </MudButton>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           FullWidth="true">
+                                    Gestionar empleados
+                                </MudButton>
 
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   FullWidth="true">
-                            Cancelar relaciones con TiendaCry
-                        </MudButton>
-                    </MudStack>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           FullWidth="true">
+                                    Cancelar relaciones con TiendaCry
+                                </MudButton>
+                            </MudStack>
+                        </Authorized>
+                    </AuthorizeView>
                 </MudStack>
             </MudContainer>
         }
@@ -84,15 +93,15 @@
 
         try
         {
-            UsuarioActualResponse? usuario = SesionUsuarioService.UsuarioActual;
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
-            if (usuario is null)
+            if (estado.User.Identity?.IsAuthenticated != true)
             {
                 Navigation.NavigateTo("/login", replace: true);
                 return;
             }
 
-            _esAdministradorTiendaCry = usuario.EsAdministradorTiendaCry;
+            _esAdministradorTiendaCry = estado.User.IsInRole(RolesUsuario.AdministradorTiendaCry);
 
             if (_esAdministradorTiendaCry)
             {
@@ -110,7 +119,6 @@
         {
             if (e.StatusCode == HttpStatusCode.Unauthorized)
             {
-                SesionUsuarioService.Limpiar();
                 Navigation.NavigateTo("/login", replace: true);
             }
             else if (e.StatusCode == HttpStatusCode.Forbidden)

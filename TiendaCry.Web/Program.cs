@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components.Authorization;
+using TiendaCry.Web.Auth;
 using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -16,7 +18,9 @@ builder.Services.AddHttpClient("TiendaCry", client =>
 
 builder.Services.AddScoped<AlmacenamientoTokensService>();
 builder.Services.AddScoped<AutenticacionService>();
-builder.Services.AddScoped<SesionUsuarioService>();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<AuthenticationStateProvider, EstadoAutenticacionProvider>();
 builder.Services.AddScoped<TiendaService>();
 builder.Services.AddScoped<ProvinciaService>();
 builder.Services.AddScoped<CategoriaService>();

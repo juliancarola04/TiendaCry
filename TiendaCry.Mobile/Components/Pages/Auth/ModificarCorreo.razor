@@ -1,12 +1,13 @@
 @page "/modificar-correo"
+@attribute [Authorize]
 @layout AutenticacionLayout
 @using System.Net
 @using TiendaCry.Shared.DTO.Auth.Request
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Shared.ViewModels.Auth
 @using TiendaCry.Mobile.Services
 @inject AutenticacionService AutenticacionService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <PageTitle>Modificar correo</PageTitle>
 
@@ -65,15 +66,18 @@
     {
         try
         {
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
-            if (usuario.EmailVerificado)
+            if (estado.User.Identity?.IsAuthenticated != true)
             {
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("/login");
                 return;
             }
 
-            _modelo.Email = usuario.Email;
+            if (ClaimsUsuario.TieneEmailVerificado(estado.User))
+            {
+                Navigation.NavigateTo("/");
+            }
         }
         catch (HttpRequestException e)
         {

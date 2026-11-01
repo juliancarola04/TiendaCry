@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Data;
 using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Repositories;
+using TiendaCry.Shared.Auth;
 
 namespace TiendaCry.Backend.Implementacion
 {
@@ -12,6 +13,54 @@ namespace TiendaCry.Backend.Implementacion
         public UsuarioRepositoryPsqlEF(DataContext dataContext)
         {
             _dataContext = dataContext;
+        }
+
+        public async Task<List<string>> ObtenerRoles(int idUsuario)
+        {
+            List<string> roles = new List<string>();
+
+            bool esAdministradorTiendaCry = await _dataContext.Usuarios
+                .AnyAsync(u => u.Id == idUsuario
+                    && u.EstadoUsuario.Nombre == "Activo"
+                    && u.EsAdministradorTiendaCry);
+
+            if (esAdministradorTiendaCry)
+            {
+                roles.Add(RolesUsuario.AdministradorTiendaCry);
+            }
+
+            bool esSocio = await _dataContext.Socios
+                .AnyAsync(s => s.IdUsuario == idUsuario
+                    && s.Usuario.EstadoUsuario.Nombre == "Activo");
+
+            if (esSocio)
+            {
+                roles.Add(RolesUsuario.Socio);
+            }
+
+            List<string> rolesTienda = await _dataContext.UsuariosTienda
+                .Where(ut => ut.IdUsuario == idUsuario
+                    && ut.Usuario.EstadoUsuario.Nombre == "Activo"
+                    && ut.FechaBaja == null
+                    && ut.EstadoUsuarioTienda.Nombre == "Activo"
+                    && ut.Tienda.EstadoTienda.Nombre == "Aprobada"
+                    && (ut.RolTienda.Nombre == "Administrador"
+                        || ut.RolTienda.Nombre == "Empleado"))
+                .Select(ut => ut.RolTienda.Nombre)
+                .Distinct()
+                .ToListAsync();
+
+            if (rolesTienda.Contains("Administrador"))
+            {
+                roles.Add(RolesUsuario.AdministradorTienda);
+                roles.Add(RolesUsuario.EmpleadoTienda);
+            }
+            else if (rolesTienda.Contains("Empleado"))
+            {
+                roles.Add(RolesUsuario.EmpleadoTienda);
+            }
+
+            return roles;
         }
 
         public async Task<bool> ExistePorUsername(string username)

@@ -1,11 +1,9 @@
 @page "/registro"
 @layout AutenticacionLayout
 @using TiendaCry.Shared.DTO.Auth.Request
-@using TiendaCry.Shared.DTO.Auth.Response
 @using TiendaCry.Shared.ViewModels.Auth
 @using TiendaCry.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>Registrarse</PageTitle>
@@ -111,11 +109,6 @@
             RegisterRequest request = new RegisterRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email, _modelo.Nombre, _modelo.Apellido);
 
             await AutenticacionService.Registrarse(request);
-
-            SesionUsuarioService.Limpiar();
-
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
 
             Navigation.NavigateTo("/verificar-correo");
         }

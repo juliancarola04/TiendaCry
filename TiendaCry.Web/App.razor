@@ -1,6 +1,27 @@
 ﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(AutenticacionLayout)">
+            <NotAuthorized Context="estado">
+                @if (estado.User.Identity?.IsAuthenticated == true)
+                {
+                    <MudStack Spacing="3">
+                        <MudAlert Severity="Severity.Error">
+                            No tenés permiso para acceder a esta página.
+                        </MudAlert>
+                        <MudButton Href="/" Color="Color.Primary">
+                            Volver al inicio
+                        </MudButton>
+                    </MudStack>
+                }
+                else
+                {
+                    <RedirigirLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            </Authorizing>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>

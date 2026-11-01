@@ -7,6 +7,7 @@ using System.Text;
 using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Options;
 using TiendaCry.Backend.Repositories;
+using TiendaCry.Shared.Auth;
 
 namespace TiendaCry.Backend.Services
 {
@@ -15,24 +16,26 @@ namespace TiendaCry.Backend.Services
     {
         private readonly JwtSettings _settings = jwtSettings.Value;
 
-        public string CrearToken(Usuario usuario)
+        public string CrearToken(Usuario usuario, List<string> roles)
         {
-            var expiracion = DateTime.UtcNow
-                .AddMinutes(_settings.ExpiryMinutes);
+            DateTime expiracion = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes);
 
-            var claims = new List<Claim>
+            List<Claim> claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString())
+                new Claim(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
+                new Claim(ClaimsUsuario.EmailVerificado, usuario.EmailVerificado ? "true" : "false", ClaimValueTypes.Boolean)
             };
 
-            var signingKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_settings.Key));
+            foreach (string rol in roles.Distinct())
+            {
+                claims.Add(new Claim(ClaimTypes.Role, rol));
+            }
 
-            var credentials = new SigningCredentials(
-                signingKey,
-                SecurityAlgorithms.HmacSha256);
+            SymmetricSecurityKey signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
 
-            var descriptor = new SecurityTokenDescriptor
+            SigningCredentials credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+
+            SecurityTokenDescriptor descriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = expiracion,
@@ -41,10 +44,9 @@ namespace TiendaCry.Backend.Services
                 SigningCredentials = credentials
             };
 
-            var handler = new JsonWebTokenHandler();
-            var token = handler.CreateToken(descriptor);
+            JsonWebTokenHandler handler = new JsonWebTokenHandler();
 
-            return token;
+            return handler.CreateToken(descriptor);
         }
 
         public string CrearRefreshToken()
@@ -54,7 +56,7 @@ namespace TiendaCry.Backend.Services
 
         public string CalcularHash(string token)
         {
-            var bytes = Encoding.UTF8.GetBytes(token);
+            byte[] bytes = Encoding.UTF8.GetBytes(token);
             return Convert.ToHexString(SHA256.HashData(bytes));
         }
     }

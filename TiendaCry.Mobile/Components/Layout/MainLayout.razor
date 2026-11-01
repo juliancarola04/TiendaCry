@@ -1,10 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @using System.Net
-@using TiendaCry.Mobile.Services
-@using TiendaCry.Shared.DTO.Auth.Response
-@inject AutenticacionService AutenticacionService
-@inject AlmacenamientoTokensService AlmacenamientoTokensService
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider EstadoAutenticacion
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -62,17 +59,15 @@ else if (_autorizado)
 
         try
         {
-            AutenticacionResponse? sesion = await AlmacenamientoTokensService.Obtener();
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
-            if (sesion is null)
+            if (estado.User.Identity?.IsAuthenticated != true)
             {
                 Navigation.NavigateTo("/login");
                 return;
             }
 
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-
-            if (!usuario.EmailVerificado)
+            if (!ClaimsUsuario.TieneEmailVerificado(estado.User))
             {
                 Navigation.NavigateTo("/verificar-correo");
                 return;
