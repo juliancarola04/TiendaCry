@@ -9,11 +9,13 @@ namespace TiendaCry.Backend.Services
 {
     public class TiendaService
     {
+        private readonly ILogger<TiendaService> _logger;
         private readonly ITiendaRepository _tiendaRepository;
         private readonly IUsuarioRepository _usuarioRepository;
 
-        public TiendaService(ITiendaRepository tiendaRepository, IUsuarioRepository usuarioRepository)
+        public TiendaService(ITiendaRepository tiendaRepository, IUsuarioRepository usuarioRepository, ILogger<TiendaService> logger)
         {
+            _logger = logger;
             _tiendaRepository = tiendaRepository;
             _usuarioRepository = usuarioRepository;
         }
@@ -211,6 +213,8 @@ namespace TiendaCry.Backend.Services
 
             await _tiendaRepository.CrearSolicitud(tienda);
 
+            _logger.LogInformation("El usuario {IdUsuario} solicitó el alta de la tienda {IdTienda}.", idUsuario, tienda.Id);
+
             return new SolicitudTiendaResponse(tienda.Id, tienda.Nombre, "PendienteRevision", null);
         }
 
@@ -316,6 +320,8 @@ namespace TiendaCry.Backend.Services
 
             await _tiendaRepository.GuardarCambios();
 
+            _logger.LogInformation("El usuario {IdUsuario} reenvió la solicitud de la tienda {IdTienda}.", idUsuario, idTienda);
+
             return new SolicitudTiendaResponse(tienda.Id, tienda.Nombre, "PendienteRevision", null);
         }
 
@@ -357,6 +363,8 @@ namespace TiendaCry.Backend.Services
             tienda.MotivoRechazo = motivoRechazo;
 
             await _tiendaRepository.GuardarCambios();
+
+            _logger.LogInformation("El administrador {IdAdministrador} cambió la solicitud de la tienda {IdTienda} al estado {Estado}.", idUsuario, idTienda, estado);
 
             return true;
         }
@@ -403,6 +411,8 @@ namespace TiendaCry.Backend.Services
             }
 
             await _tiendaRepository.GuardarCambios();
+
+            _logger.LogInformation("El administrador {IdAdministrador} dio de baja la tienda {IdTienda} y actualizó sus vinculaciones y promociones.", idUsuario, idTienda);
 
             return true;
         }

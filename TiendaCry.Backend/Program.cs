@@ -1,3 +1,5 @@
+using Serilog;
+using TiendaCry.Backend.Manejadores;
 using TiendaCry.Backend.Implementacion;
 using TiendaCry.Backend.Repositories;
 using TiendaCry.Backend.Services;
@@ -18,6 +20,14 @@ namespace TiendaCry.Backend
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.AddSerilog((services, configuration) =>
+            {
+                configuration.ReadFrom.Configuration(builder.Configuration);
+            });
+
+            builder.Services.AddExceptionHandler<ManejadorExcepciones>();
+            builder.Services.AddProblemDetails();
 
             builder.Services.AddSingleton<ITokenService, TokenService>();
             builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
@@ -172,6 +182,8 @@ namespace TiendaCry.Backend
             {
                 app.MapOpenApi();
             }
+
+            app.UseExceptionHandler();
 
             app.UseHttpsRedirection();
 

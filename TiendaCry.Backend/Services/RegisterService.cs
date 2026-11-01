@@ -9,17 +9,15 @@ namespace TiendaCry.Backend.Services
 {
     public class RegisterService
     {
+        private readonly ILogger<RegisterService> _logger;
         private readonly IRegisterRepository _repo;
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly ITokenService _tokenService;
         private readonly ISesionUsuarioRepository _sesionRepository;
 
-        public RegisterService(
-            IRegisterRepository repo,
-            IUsuarioRepository usuarioRepository,
-            ITokenService tokenService,
-            ISesionUsuarioRepository sesionRepository)
+        public RegisterService(IRegisterRepository repo, IUsuarioRepository usuarioRepository, ITokenService tokenService, ISesionUsuarioRepository sesionRepository, ILogger<RegisterService> logger)
         {
+            _logger = logger;
             _repo = repo;
             _usuarioRepository = usuarioRepository;
             _tokenService = tokenService;
@@ -111,6 +109,8 @@ namespace TiendaCry.Backend.Services
             };
 
             await _sesionRepository.Crear(sesion);
+
+            _logger.LogInformation("Se completó el registro del usuario {IdUsuario}. Sesión {IdSesion}.", usuario.Id, sesion.Id);
 
             return new AutenticacionResponse(token, refreshToken);
         }

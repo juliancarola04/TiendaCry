@@ -12,17 +12,15 @@ namespace TiendaCry.Backend.Services
 {
     public class VerificacionEmailService
     {
+        private readonly ILogger<VerificacionEmailService> _logger;
         private readonly ITokenEmailRepository _tokenEmailRepository;
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly EmailService _emailService;
         private readonly EmailSettings _settings;
 
-        public VerificacionEmailService(
-            ITokenEmailRepository tokenEmailRepository,
-            IUsuarioRepository usuarioRepository,
-            EmailService emailService,
-            IOptions<EmailSettings> settings)
+        public VerificacionEmailService(ITokenEmailRepository tokenEmailRepository, IUsuarioRepository usuarioRepository, EmailService emailService, IOptions<EmailSettings> settings, ILogger<VerificacionEmailService> logger)
         {
+            _logger = logger;
             _tokenEmailRepository = tokenEmailRepository;
             _usuarioRepository = usuarioRepository;
             _emailService = emailService;
@@ -58,6 +56,8 @@ namespace TiendaCry.Backend.Services
                 usuario.Email,
                 "Verificá tu correo en TiendaCry",
                 contenidoHtml);
+
+            _logger.LogInformation("Se envió un correo de verificación al usuario {IdUsuario}.", idUsuario);
         }
 
         public async Task ConfirmarEmailAsync(string token)
@@ -80,6 +80,8 @@ namespace TiendaCry.Backend.Services
                 throw new DatosLlegaronErradosException(
                     "El link de verificación es inválido, venció o ya fue utilizado.");
             }
+
+            _logger.LogInformation("Se confirmó correctamente un correo electrónico.");
         }
 
         private async Task<string> GenerarTokenAsync(Usuario usuario)

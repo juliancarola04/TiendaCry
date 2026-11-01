@@ -13,13 +13,15 @@ namespace TiendaCry.Backend.Services;
 
 public class RecuperacionContrasenaService
 {
+    private readonly ILogger<RecuperacionContrasenaService> _logger;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITokenEmailRepository _tokenEmailRepository;
     private readonly EmailService _emailService;
     private readonly EmailSettings _settings;
 
-    public RecuperacionContrasenaService(IUsuarioRepository usuarioRepository, ITokenEmailRepository tokenEmailRepository, EmailService emailService, IOptions<EmailSettings> settings)
+    public RecuperacionContrasenaService(IUsuarioRepository usuarioRepository, ITokenEmailRepository tokenEmailRepository, EmailService emailService, IOptions<EmailSettings> settings, ILogger<RecuperacionContrasenaService> logger)
     {
+        _logger = logger;
         _usuarioRepository = usuarioRepository;
         _tokenEmailRepository = tokenEmailRepository;
         _emailService = emailService;
@@ -47,6 +49,8 @@ public class RecuperacionContrasenaService
         {
             throw new DatosLlegaronErradosException("El link es inválido, venció o ya fue utilizado.");
         }
+
+        _logger.LogInformation("Se restableció correctamente una contraseña mediante recuperación.");
     }
 
     public async Task SolicitarRecuperacion(SolicitarRecuperacionContrasenaRequest request)
@@ -110,5 +114,7 @@ public class RecuperacionContrasenaService
         await _tokenEmailRepository.GuardarAsync(tokenEmail);
 
         await _emailService.EnviarAsync(usuario.Email, "Restablecé tu contraseña en TiendaCry", contenidoHtml);
+
+        _logger.LogInformation("Se envió un correo de recuperación de contraseña al usuario {IdUsuario}.", usuario.Id);
     }
 }

@@ -9,12 +9,14 @@ namespace TiendaCry.Backend.Services;
 
 public class EmpleadoService
 {
+    private readonly ILogger<EmpleadoService> _logger;
     private readonly IEmpleadoRepository _empleadoRepository;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IRegisterRepository _registerRepository;
 
-    public EmpleadoService(IEmpleadoRepository empleadoRepository, IUsuarioRepository usuarioRepository, IRegisterRepository registerRepository)
+    public EmpleadoService(IEmpleadoRepository empleadoRepository, IUsuarioRepository usuarioRepository, IRegisterRepository registerRepository, ILogger<EmpleadoService> logger)
     {
+        _logger = logger;
         _empleadoRepository = empleadoRepository;
         _usuarioRepository = usuarioRepository;
         _registerRepository = registerRepository;
@@ -52,6 +54,7 @@ public class EmpleadoService
 
         string email = ValidarCorreo(request.Email);
         Usuario? usuario = await _usuarioRepository.BuscarPorEmail(email);
+        bool cuentaNueva = usuario is null;
 
         if (usuario is not null)
         {
@@ -127,6 +130,14 @@ public class EmpleadoService
         }
 
         await _empleadoRepository.Agregar(vinculacion);
+
+        if (cuentaNueva)
+        {
+            _logger.LogInformation("El administrador {IdAdministrador} creó la cuenta del usuario {IdUsuario} para incorporarlo como empleado.", idUsuario, usuario.Id);
+        }
+
+        _logger.LogInformation("El administrador {IdAdministrador} vinculó al usuario {IdEmpleado} con la tienda {IdTienda}. Vinculación {IdUsuarioTienda}.",
+            idUsuario, usuario.Id, idTienda, vinculacion.Id);
     }
 
     public async Task<bool> DarDeBaja(int idTienda, int idUsuarioTienda, int idUsuario)
@@ -151,6 +162,8 @@ public class EmpleadoService
         empleado.FechaBaja = DateTime.UtcNow;
 
         await _empleadoRepository.GuardarCambios();
+
+        _logger.LogInformation("El administrador {IdAdministrador} dio de baja la vinculación {IdUsuarioTienda} de la tienda {IdTienda}.", idUsuario, idUsuarioTienda, idTienda);
 
         return true;
     }

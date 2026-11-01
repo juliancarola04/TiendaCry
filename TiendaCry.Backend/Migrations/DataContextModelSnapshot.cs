@@ -227,6 +227,47 @@ namespace TiendaCry.Backend.Migrations
                     b.ToTable("EstadosUsuarioTienda", (string)null);
                 });
 
+            modelBuilder.Entity("TiendaCry.Backend.Models.Imagen", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IdPromocion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NombreArchivo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NombreOriginal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RutaRelativa")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("TamanoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TipoContenido")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdPromocion")
+                        .IsUnique();
+
+                    b.ToTable("Imagenes", (string)null);
+                });
+
             modelBuilder.Entity("TiendaCry.Backend.Models.Membresia", b =>
                 {
                     b.Property<int>("Id")
@@ -319,10 +360,6 @@ namespace TiendaCry.Backend.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("DireccionImagen")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -754,6 +791,17 @@ namespace TiendaCry.Backend.Migrations
                     b.Navigation("Membresia");
                 });
 
+            modelBuilder.Entity("TiendaCry.Backend.Models.Imagen", b =>
+                {
+                    b.HasOne("TiendaCry.Backend.Models.Promocion", "Promocion")
+                        .WithOne("Imagen")
+                        .HasForeignKey("TiendaCry.Backend.Models.Imagen", "IdPromocion")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Promocion");
+                });
+
             modelBuilder.Entity("TiendaCry.Backend.Models.Membresia", b =>
                 {
                     b.HasOne("TiendaCry.Backend.Models.EstadoMembresia", "EstadoMembresia")
@@ -1030,6 +1078,8 @@ namespace TiendaCry.Backend.Migrations
 
             modelBuilder.Entity("TiendaCry.Backend.Models.Promocion", b =>
                 {
+                    b.Navigation("Imagen");
+
                     b.Navigation("UsosPromocion");
                 });
 

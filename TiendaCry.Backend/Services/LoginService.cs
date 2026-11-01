@@ -8,12 +8,14 @@ namespace TiendaCry.Backend.Services
 {
     public class LoginService
     {
+        private readonly ILogger<LoginService> _logger;
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly ITokenService _tokenService;
         private readonly ISesionUsuarioRepository _sesionRepository;
 
-        public LoginService(IUsuarioRepository usuarioRepository, ITokenService tokenService, ISesionUsuarioRepository sesionRepository)
+        public LoginService(IUsuarioRepository usuarioRepository, ITokenService tokenService, ISesionUsuarioRepository sesionRepository, ILogger<LoginService> logger)
         {
+            _logger = logger;
             _usuarioRepository = usuarioRepository;
             _tokenService = tokenService;
             _sesionRepository = sesionRepository;
@@ -58,6 +60,8 @@ namespace TiendaCry.Backend.Services
             };
 
             await _sesionRepository.Crear(sesion);
+
+            _logger.LogInformation("El usuario {IdUsuario} inició sesión. Sesión {IdSesion}.", usuario.Id, sesion.Id);
 
             return new AutenticacionResponse(token, refreshToken);
         }

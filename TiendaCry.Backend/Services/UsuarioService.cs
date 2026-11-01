@@ -8,10 +8,12 @@ namespace TiendaCry.Backend.Services
 {
     public class UsuarioService
     {
+        private readonly ILogger<UsuarioService> _logger;
         private readonly IUsuarioRepository _usuarioRepository;
 
-        public UsuarioService(IUsuarioRepository usuarioRepository)
+        public UsuarioService(IUsuarioRepository usuarioRepository, ILogger<UsuarioService> logger)
         {
+            _logger = logger;
             _usuarioRepository = usuarioRepository;
         }
 
@@ -45,6 +47,8 @@ namespace TiendaCry.Backend.Services
             {
                 throw new SinPermisoException("No se pudo cambiar la contraseña temporal de esta cuenta.");
             }
+
+            _logger.LogInformation("El usuario {IdUsuario} cambió su contraseña temporal.", idUsuario);
         }
 
         public async Task ModificarEmailSinVerificar(int idUsuario, ModificarEmailRequest request)
@@ -89,6 +93,8 @@ namespace TiendaCry.Backend.Services
             {
                 throw new DatosLlegaronErradosException("No se pudo modificar el correo de esta cuenta.");
             }
+
+            _logger.LogInformation("El usuario {IdUsuario} modificó su correo sin verificar.", idUsuario);
         }
 
     }
