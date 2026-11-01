@@ -1,0 +1,150 @@
+@page "/tiendas/{IdTienda:int}/empleados/agregar"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Empleado.Request
+@using TiendaCry.Shared.DTO.Empleado.Response
+@using TiendaCry.Shared.ViewModels.Empleado
+@using TiendaCry.Web.Services
+@inject EmpleadoService EmpleadoService
+@inject NavigationManager Navigation
+
+<PageTitle>Agregar empleado</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">Agregar empleado</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Enviar">
+            <MudStack Spacing="4">
+                <MudTextField T="string" @bind-Value="_modelo.Email" Label="Correo"
+                              Variant="Variant.Outlined" ReadOnly="_crearCuenta"
+                              Required="true" RequiredError="Ingresá un correo." />
+
+                @if (_crearCuenta)
+                {
+                    <MudText>No existe una cuenta con ese correo. Completá sus datos.</MudText>
+                    <MudTextField T="string" @bind-Value="_modelo.Usuario" Label="Usuario"
+                                  Variant="Variant.Outlined" Required="true" RequiredError="Ingresá un usuario." />
+                    <MudTextField T="string" @bind-Value="_modelo.ContrasenaTemporal" Label="Contraseña temporal"
+                                  Variant="Variant.Outlined" InputType="InputType.Password"
+                                  Required="true" RequiredError="Ingresá una contraseña temporal." />
+                    <MudTextField T="string" @bind-Value="_modelo.Nombre" Label="Nombre"
+                                  Variant="Variant.Outlined" Required="true" RequiredError="Ingresá el nombre." />
+                    <MudTextField T="string" @bind-Value="_modelo.Apellido" Label="Apellido"
+                                  Variant="Variant.Outlined" Required="true" RequiredError="Ingresá el apellido." />
+                }
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                           Disabled="_procesando" OnClick="Enviar">
+                    @(_procesando ? "Procesando..." : _crearCuenta ? "Crear y agregar empleado" : "Continuar")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+
+        @if (_crearCuenta)
+        {
+            <MudButton OnClick="ModificarCorreo" Disabled="_procesando">Modificar correo</MudButton>
+        }
+
+        <MudButton Href="@($"/tiendas/{IdTienda}/empleados")" Disabled="_procesando">Volver a empleados</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private readonly AgregarEmpleadoViewModel _modelo = new AgregarEmpleadoViewModel();
+    private MudForm _formulario = null!;
+    private bool _crearCuenta;
+    private bool _procesando;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        _modelo.Email = string.Empty;
+        ModificarCorreo();
+    }
+
+    private void ModificarCorreo()
+    {
+        _crearCuenta = false;
+        _modelo.Usuario = string.Empty;
+        _modelo.ContrasenaTemporal = string.Empty;
+        _modelo.Nombre = string.Empty;
+        _modelo.Apellido = string.Empty;
+        _error = null;
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            if (!_crearCuenta)
+            {
+                ConsultarCorreoEmpleadoRequest consulta = new ConsultarCorreoEmpleadoRequest(_modelo.Email);
+                ConsultarCorreoEmpleadoResponse resultado = await EmpleadoService.ConsultarCorreo(IdTienda, consulta);
+
+                if (!resultado.Existe)
+                {
+                    _crearCuenta = true;
+                    return;
+                }
+            }
+
+            AgregarEmpleadoRequest request = new AgregarEmpleadoRequest(_modelo.Email, _modelo.Usuario, _modelo.ContrasenaTemporal, _modelo.Nombre, _modelo.Apellido);
+            await EmpleadoService.AgregarEmpleado(IdTienda, request);
+
+            _modelo.ContrasenaTemporal = string.Empty;
+            Navigation.NavigateTo($"/tiendas/{IdTienda}/empleados");
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para agregar empleados a esta tienda.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo agregar al empleado.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

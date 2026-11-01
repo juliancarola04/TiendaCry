@@ -15,6 +15,38 @@ namespace TiendaCry.Backend.Services
             _usuarioRepository = usuarioRepository;
         }
 
+        public async Task CambiarContrasenaTemporal(int idUsuario, CambiarContrasenaTemporalRequest request)
+        {
+            if (!Validaciones.EstanDatosBien(request.Contrasena))
+            {
+                throw new DatosLlegaronErradosException("Ingresá tu contraseña nueva.");
+            }
+
+            Usuario? usuario = await _usuarioRepository.BuscarPorId(idUsuario);
+
+            if (usuario is null || !await _usuarioRepository.EstaActivo(idUsuario))
+            {
+                throw new CredencialesInvalidasException();
+            }
+
+            if (!usuario.EmailVerificado)
+            {
+                throw new SinPermisoException("Verificá tu correo antes de cambiar la contraseña temporal.");
+            }
+
+            if (!usuario.DebeCambiarContrasena)
+            {
+                throw new DatosLlegaronErradosException("La cuenta no requiere un cambio de contraseña temporal.");
+            }
+
+            string contrasena = BCrypt.Net.BCrypt.EnhancedHashPassword(request.Contrasena);
+
+            if (!await _usuarioRepository.CambiarContrasenaTemporal(idUsuario, contrasena))
+            {
+                throw new SinPermisoException("No se pudo cambiar la contraseña temporal de esta cuenta.");
+            }
+        }
+
         public async Task ModificarEmailSinVerificar(int idUsuario, ModificarEmailRequest request)
         {
             if (!Validaciones.EstanDatosBien(request.Email))

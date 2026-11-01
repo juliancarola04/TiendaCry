@@ -101,6 +101,24 @@ namespace TiendaCry.Backend.Implementacion
             return true;
         }
 
+        public async Task<bool> CambiarContrasenaTemporal(int idUsuario, string contrasena)
+        {
+            Usuario? usuario = await _dataContext.Usuarios.FirstOrDefaultAsync(u => u.Id == idUsuario
+                && u.EstadoUsuario.Nombre == "Activo" && u.EmailVerificado && u.DebeCambiarContrasena);
+
+            if (usuario is null)
+            {
+                return false;
+            }
+
+            usuario.Contrasena = contrasena;
+            usuario.DebeCambiarContrasena = false;
+
+            await _dataContext.SaveChangesAsync();
+
+            return true;
+        }
+
         public async Task<bool> EstaActivo(int id)
         {
             return await _dataContext.Usuarios

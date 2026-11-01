@@ -57,6 +57,21 @@ public class AutenticacionService
         await ValidarRespuesta(respuesta, "No se pudo enviar el correo de verificación.");
     }
 
+    public async Task CambiarContrasenaTemporal(CambiarContrasenaTemporalRequest request)
+    {
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, "api/auth/cambiar-contrasena-temporal")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        if (respuesta.StatusCode == HttpStatusCode.Forbidden)
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
+
+        await ValidarRespuesta(respuesta, "No se pudo cambiar la contraseña temporal.");
+    }
+
     public async Task ModificarEmail(ModificarEmailRequest request)
     {
         using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, "api/auth/email-sin-verificar")

@@ -1,0 +1,164 @@
+@page "/tiendas/{IdTienda:int}/empleados"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Empleado.Response
+@using TiendaCry.Web.Services
+@inject EmpleadoService EmpleadoService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de empleados</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" HtmlTag="h1">Gestión de empleados</MudText>
+            <MudTooltip Text="Agregar empleado">
+                <MudIconButton Href="@($"/tiendas/{IdTienda}/empleados/agregar")"
+                               Icon="@Icons.Material.Filled.Add"
+                               Color="Color.Primary"
+                               Disabled="_procesando"
+                               aria-label="Agregar empleado" />
+            </MudTooltip>
+        </MudStack>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarEmpleados" Color="Color.Primary">Reintentar</MudButton>
+        }
+        else
+        {
+            <MudTable T="EmpleadoResponse" Items="_empleados" Hover="true">
+                <HeaderContent>
+                    <MudTh>Nombre</MudTh>
+                    <MudTh>Apellido</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="empleado">
+                    <MudTd DataLabel="Nombre">@empleado.Nombre</MudTd>
+                    <MudTd DataLabel="Apellido">@empleado.Apellido</MudTd>
+                    <MudTd DataLabel="Acciones">
+                        <MudTooltip Text="Dar de baja">
+                            <MudIconButton OnClick="() => DarDeBaja(empleado)"
+                                           Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Error"
+                                           Disabled="_procesando"
+                                           aria-label="@($"Dar de baja a {empleado.Nombre} {empleado.Apellido}")" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText>No hay empleados en esta tienda.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/" Disabled="_procesando">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private List<EmpleadoResponse> _empleados = new List<EmpleadoResponse>();
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarEmpleados();
+    }
+
+    private async Task CargarEmpleados()
+    {
+        _cargando = true;
+        _error = null;
+        _empleados.Clear();
+
+        try
+        {
+            _empleados = await EmpleadoService.ObtenerEmpleados(IdTienda);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task DarDeBaja(EmpleadoResponse empleado)
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync("Dar de baja al empleado",
+                $"¿Querés quitarle a {empleado.Nombre} {empleado.Apellido} el acceso a esta tienda?",
+                yesText: "Dar de baja", cancelText: "Cancelar");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            await EmpleadoService.DarDeBaja(IdTienda, empleado.IdUsuarioTienda);
+            _empleados.RemoveAll(e => e.IdUsuarioTienda == empleado.IdUsuarioTienda);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para gestionar los empleados de esta tienda.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _error = "El empleado ya no está disponible en esta tienda.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la operación.";
+        }
+    }
+}

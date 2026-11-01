@@ -34,6 +34,33 @@ namespace TiendaCry.Backend.Controllers
             _recuperacionContrasenaService = recuperacionContrasenaService;
         }
 
+        [HttpPut("cambiar-contrasena-temporal")]
+        [Authorize]
+        public async Task<IActionResult> CambiarContrasenaTemporal(CambiarContrasenaTemporalRequest request)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                await _usuarioService.CambiarContrasenaTemporal(idUsuario, request);
+
+                return NoContent();
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
         [HttpPost("logout")]
         [AllowAnonymous]
         public async Task<IActionResult> CerrarSesion(LogoutRequest request)

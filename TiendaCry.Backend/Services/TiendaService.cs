@@ -32,6 +32,11 @@ namespace TiendaCry.Backend.Services
                 throw new SinPermisoException("Verificá tu correo para consultar tu tienda activa.");
             }
 
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
+            }
+
             Tienda? tienda = await _tiendaRepository.BuscarTiendaActivaPorAdministrador(idUsuario);
 
             if (tienda is null)
@@ -116,6 +121,11 @@ namespace TiendaCry.Backend.Services
                 throw new SinPermisoException("Verificá tu correo para consultar las solicitudes de tiendas.");
             }
 
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
+            }
+
             List<Tienda> tiendas = await _tiendaRepository.ObtenerSolicitudesPorUsuario(idUsuario);
 
             return tiendas.Select(t => new SolicitudTiendaResponse(
@@ -137,6 +147,11 @@ namespace TiendaCry.Backend.Services
             if (!usuario.EmailVerificado)
             {
                 throw new SinPermisoException("Verificá tu correo para solicitar el alta de una tienda.");
+            }
+
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
             }
 
             if (!Validaciones.EstanDatosBien(request.Nombre, request.Calle, request.NumCalle))
@@ -213,6 +228,11 @@ namespace TiendaCry.Backend.Services
                 throw new SinPermisoException("Verificá tu correo para consultar la solicitud de la tienda.");
             }
 
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
+            }
+
             Tienda? tienda = await _tiendaRepository.BuscarSolicitudRechazada(idTienda, idUsuario);
 
             if (tienda is null)
@@ -243,6 +263,11 @@ namespace TiendaCry.Backend.Services
             if (!usuario.EmailVerificado)
             {
                 throw new SinPermisoException("Verificá tu correo para reenviar la solicitud de la tienda.");
+            }
+
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
             }
 
             Tienda? tienda = await _tiendaRepository.BuscarSolicitudRechazada(idTienda, idUsuario);
@@ -399,6 +424,11 @@ namespace TiendaCry.Backend.Services
             if (!usuario.EmailVerificado)
             {
                 throw new SinPermisoException("Verificá tu correo para gestionar tiendas.");
+            }
+
+            if (usuario.DebeCambiarContrasena)
+            {
+                throw new SinPermisoException("Cambiá tu contraseña temporal para continuar.");
             }
         }
     }

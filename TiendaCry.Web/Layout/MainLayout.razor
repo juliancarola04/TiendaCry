@@ -77,6 +77,12 @@ else if (_autorizado)
                 return;
             }
 
+            if (ClaimsUsuario.RequiereCambioContrasena(estado.User))
+            {
+                Navigation.NavigateTo("/cambiar-contrasena-temporal");
+                return;
+            }
+
             _autorizado = true;
         }
         catch (HttpRequestException e)

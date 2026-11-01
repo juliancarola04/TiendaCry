@@ -23,7 +23,8 @@ namespace TiendaCry.Backend.Services
             List<Claim> claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-                new Claim(ClaimsUsuario.EmailVerificado, usuario.EmailVerificado ? "true" : "false", ClaimValueTypes.Boolean)
+                new Claim(ClaimsUsuario.EmailVerificado, usuario.EmailVerificado ? "true" : "false", ClaimValueTypes.Boolean),
+                new Claim(ClaimsUsuario.DebeCambiarContrasena, usuario.DebeCambiarContrasena ? "true" : "false", ClaimValueTypes.Boolean)
             };
 
             foreach (string rol in roles.Distinct())

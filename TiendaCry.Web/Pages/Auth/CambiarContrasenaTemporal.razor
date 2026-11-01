@@ -1,0 +1,194 @@
+@page "/cambiar-contrasena-temporal"
+@attribute [Authorize]
+@layout AutenticacionLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Auth.Request
+@using TiendaCry.Shared.ViewModels.Auth
+@using TiendaCry.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject AuthenticationStateProvider EstadoAutenticacion
+@inject NavigationManager Navigation
+
+<PageTitle>Cambiar contraseña temporal</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Cambiá tu contraseña temporal</MudText>
+
+    @if (_cargando)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+    }
+
+    @if (_autorizado)
+    {
+        @if (_guardada)
+        {
+            <MudAlert Severity="Severity.Success">La contraseña fue cambiada.</MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Disabled="_procesando" OnClick="Guardar">Continuar</MudButton>
+        }
+        else
+        {
+            <MudText Align="Align.Center">
+                Detectamos que tu cuenta fue generada y<br />
+                es la primera vez que entras a esta.<br />
+                Deberás de cambiar la contraseña.
+            </MudText>
+            <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Guardar">
+                <MudStack Spacing="4">
+                    <MudTextField T="string" @bind-Value="_modelo.Contrasena" Label="Contraseña nueva"
+                                  Variant="Variant.Outlined" InputType="InputType.Password"
+                                  Required="true" RequiredError="Ingresá tu contraseña nueva." />
+                    <MudTextField T="string" @bind-Value="_modelo.ConfirmacionContrasena" Label="Confirmar contraseña"
+                                  Variant="Variant.Outlined" InputType="InputType.Password"
+                                  Required="true" RequiredError="Volvé a ingresar tu contraseña nueva." />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                               Disabled="_procesando" OnClick="Guardar">
+                        @(_procesando ? "Guardando..." : "Guardar")
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        }
+    }
+    else if (!_cargando)
+    {
+        <MudButton OnClick="CargarSesion" Color="Color.Primary">Reintentar</MudButton>
+    }
+
+    <BotonCerrarSesion />
+</MudStack>
+
+@code {
+    private readonly CambiarContrasenaTemporalViewModel _modelo = new CambiarContrasenaTemporalViewModel();
+    private MudForm _formulario = null!;
+    private bool _cargando = true;
+    private bool _autorizado;
+    private bool _procesando;
+    private bool _guardada;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSesion();
+    }
+
+    private async Task CargarSesion()
+    {
+        _cargando = true;
+        _autorizado = false;
+        _error = null;
+
+        try
+        {
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
+
+            if (estado.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (!ClaimsUsuario.TieneEmailVerificado(estado.User))
+            {
+                Navigation.NavigateTo("/verificar-correo");
+                return;
+            }
+
+            if (!ClaimsUsuario.RequiereCambioContrasena(estado.User))
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            _autorizado = true;
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_procesando || !_autorizado)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            if (!_guardada)
+            {
+                await _formulario.ValidateAsync();
+
+                if (!_formulario.IsValid)
+                {
+                    return;
+                }
+
+                if (_modelo.Contrasena != _modelo.ConfirmacionContrasena)
+                {
+                    _error = "Las contraseñas no coinciden.";
+                    return;
+                }
+
+                CambiarContrasenaTemporalRequest request = new CambiarContrasenaTemporalRequest(_modelo.Contrasena);
+                await AutenticacionService.CambiarContrasenaTemporal(request);
+                _guardada = true;
+                _modelo.Contrasena = string.Empty;
+                _modelo.ConfirmacionContrasena = string.Empty;
+            }
+
+            await AutenticacionService.RenovarSesion();
+            Navigation.NavigateTo("/");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "Verificá tu correo y comprobá que tu cuenta esté habilitada.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar el cambio de contraseña.";
+        }
+    }
+}
