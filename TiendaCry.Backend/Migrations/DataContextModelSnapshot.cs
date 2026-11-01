@@ -172,23 +172,6 @@ namespace TiendaCry.Backend.Migrations
                     b.ToTable("EstadosPromocion", (string)null);
                 });
 
-            modelBuilder.Entity("TiendaCry.Backend.Models.EstadoSocio", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("EstadosSocio", (string)null);
-                });
-
             modelBuilder.Entity("TiendaCry.Backend.Models.EstadoTienda", b =>
                 {
                     b.Property<int>("Id")
@@ -462,9 +445,6 @@ namespace TiendaCry.Backend.Migrations
                     b.Property<int?>("IdCiudad")
                         .HasColumnType("integer");
 
-                    b.Property<int>("IdEstadoSocio")
-                        .HasColumnType("integer");
-
                     b.Property<int>("IdUsuario")
                         .HasColumnType("integer");
 
@@ -475,8 +455,6 @@ namespace TiendaCry.Backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("IdCiudad");
-
-                    b.HasIndex("IdEstadoSocio");
 
                     b.HasIndex("IdUsuario")
                         .IsUnique();
@@ -851,12 +829,6 @@ namespace TiendaCry.Backend.Migrations
                         .HasForeignKey("IdCiudad")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TiendaCry.Backend.Models.EstadoSocio", "EstadoSocio")
-                        .WithMany("Socios")
-                        .HasForeignKey("IdEstadoSocio")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("TiendaCry.Backend.Models.Usuario", "Usuario")
                         .WithOne("Socio")
                         .HasForeignKey("TiendaCry.Backend.Models.Socio", "IdUsuario")
@@ -864,8 +836,6 @@ namespace TiendaCry.Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Ciudad");
-
-                    b.Navigation("EstadoSocio");
 
                     b.Navigation("Usuario");
                 });
@@ -1030,11 +1000,6 @@ namespace TiendaCry.Backend.Migrations
             modelBuilder.Entity("TiendaCry.Backend.Models.EstadoPromocion", b =>
                 {
                     b.Navigation("Promociones");
-                });
-
-            modelBuilder.Entity("TiendaCry.Backend.Models.EstadoSocio", b =>
-                {
-                    b.Navigation("Socios");
                 });
 
             modelBuilder.Entity("TiendaCry.Backend.Models.EstadoTienda", b =>

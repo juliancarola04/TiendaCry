@@ -82,6 +82,66 @@ public class TiendaService
         return solicitudes;
     }
 
+    public async Task<DetalleTiendaResponse> ObtenerDetalleSolicitudPendiente(int idTienda)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, $"api/tiendas/solicitudes/pendientes/{idTienda}"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        DetalleTiendaResponse? solicitud = await respuesta.Content.ReadFromJsonAsync<DetalleTiendaResponse>();
+
+        if (solicitud is null)
+        {
+            throw new InvalidOperationException("No se pudieron obtener los datos de la solicitud.");
+        }
+
+        return solicitud;
+    }
+
+    public async Task AceptarSolicitud(int idTienda)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/tiendas/solicitudes/pendientes/{idTienda}/aceptar"));
+
+        await ValidarRespuesta(respuesta, "No se pudo aceptar la solicitud.");
+    }
+
+    public async Task RechazarSolicitud(int idTienda, RechazarSolicitudTiendaRequest request)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/tiendas/solicitudes/pendientes/{idTienda}/rechazar")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        await ValidarRespuesta(respuesta, "No se pudo rechazar la solicitud.");
+    }
+
+    public async Task DarDeBaja(int idTienda)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/tiendas/{idTienda}/baja"));
+
+        await ValidarRespuesta(respuesta, "No se pudo dar de baja la tienda.");
+    }
+
+    private async Task ValidarRespuesta(HttpResponseMessage respuesta, string mensajeError)
+    {
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized || respuesta.StatusCode == HttpStatusCode.Forbidden || respuesta.StatusCode == HttpStatusCode.NotFound)
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
+
+        if (!respuesta.IsSuccessStatusCode)
+        {
+            string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(mensaje))
+            {
+                mensaje = mensajeError;
+            }
+
+            throw new InvalidOperationException(mensaje);
+        }
+    }
+
     public async Task<List<SolicitudTiendaResponse>> ObtenerSolicitudes()
     {
         using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/tiendas/solicitudes"));

@@ -20,6 +20,34 @@ namespace TiendaCry.Backend.Controllers
             _tiendaService = tiendaService;
         }
 
+        [HttpPut("{idTienda:int}/baja")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<IActionResult> DarDeBaja(int idTienda)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                bool dadaDeBaja = await _tiendaService.DarDeBaja(idTienda, idUsuario);
+
+                if (!dadaDeBaja)
+                {
+                    return NotFound("La tienda no existe o ya no está aprobada.");
+                }
+
+                return NoContent();
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
         [HttpGet("activa")]
         public async Task<ActionResult<TiendaActivaResponse>> ObtenerTiendaActiva()
         {
@@ -118,6 +146,94 @@ namespace TiendaCry.Backend.Controllers
             catch (SinPermisoException e)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpGet("solicitudes/pendientes/{idTienda:int}")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<ActionResult<DetalleTiendaResponse>> ObtenerDetalleSolicitudPendiente(int idTienda)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                DetalleTiendaResponse? response = await _tiendaService.ObtenerDetalleSolicitudPendiente(idTienda, idUsuario);
+
+                if (response is null)
+                {
+                    return NotFound("La solicitud no existe o ya no está pendiente.");
+                }
+
+                return Ok(response);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpPut("solicitudes/pendientes/{idTienda:int}/aceptar")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<IActionResult> AceptarSolicitud(int idTienda)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                bool resuelta = await _tiendaService.AceptarSolicitud(idTienda, idUsuario);
+
+                if (!resuelta)
+                {
+                    return NotFound("La solicitud no existe o ya no está pendiente.");
+                }
+
+                return NoContent();
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpPut("solicitudes/pendientes/{idTienda:int}/rechazar")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<IActionResult> RechazarSolicitud(int idTienda, RechazarSolicitudTiendaRequest request)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                bool resuelta = await _tiendaService.RechazarSolicitud(idTienda, idUsuario, request);
+
+                if (!resuelta)
+                {
+                    return NotFound("La solicitud no existe o ya no está pendiente.");
+                }
+
+                return NoContent();
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
             }
         }
 

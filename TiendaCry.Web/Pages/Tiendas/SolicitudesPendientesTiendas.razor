@@ -36,15 +36,20 @@
                       Hover="true">
                 <HeaderContent>
                     <MudTh>Tienda</MudTh>
-                    <MudTh>Fecha de solicitud</MudTh>
+                    <MudTh>Acciones</MudTh>
                 </HeaderContent>
 
                 <RowTemplate Context="solicitud">
                     <MudTd DataLabel="Tienda">
                         @solicitud.Nombre
                     </MudTd>
-                    <MudTd DataLabel="Fecha de solicitud">
-                        @solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    <MudTd DataLabel="Acciones">
+                        <MudTooltip Text="Revisar solicitud">
+                            <MudIconButton Href="@($"/administracion/solicitudes-tiendas/{solicitud.Id}")"
+                                           Icon="@Icons.Material.Filled.FindInPage"
+                                           Color="Color.Primary"
+                                           aria-label="@($"Revisar solicitud de {solicitud.Nombre}")" />
+                        </MudTooltip>
                     </MudTd>
                 </RowTemplate>
 

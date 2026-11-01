@@ -1,0 +1,183 @@
+@page "/administracion/solicitudes-tiendas/{IdTienda:int}"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalle de solicitud pendiente</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            Detalle de solicitud pendiente
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+
+            <MudButton OnClick="CargarDetalle" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else if (_tienda is not null)
+        {
+            <MudTextField T="string"
+                          Label="Nombre de la tienda"
+                          Value="@_tienda.Nombre"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField T="string"
+                          Label="Provincia"
+                          Value="@_tienda.Provincia"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField T="string"
+                          Label="Ciudad"
+                          Value="@_tienda.Ciudad"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField T="string"
+                          Label="Categoría"
+                          Value="@_tienda.Categoria"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField T="string"
+                          Label="Calle"
+                          Value="@_tienda.Calle"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField T="string"
+                          Label="Número de calle"
+                          Value="@_tienda.NumCalle"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudStack Row="true" Spacing="3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_procesando"
+                           OnClick="Aceptar">
+                    @(_procesando ? "Procesando..." : "Aceptar")
+                </MudButton>
+
+                <MudButton Href="@($"/administracion/solicitudes-tiendas/{IdTienda}/rechazar")"
+                           Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           Disabled="_procesando">
+                    Rechazar
+                </MudButton>
+            </MudStack>
+        }
+
+        <MudButton Href="/administracion/solicitudes-tiendas" Color="Color.Primary" Disabled="_procesando">
+            Volver a tiendas pendientes
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private DetalleTiendaResponse? _tienda;
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarDetalle();
+    }
+
+    private async Task CargarDetalle()
+    {
+        _cargando = true;
+        _error = null;
+        _tienda = null;
+
+        try
+        {
+            _tienda = await TiendaService.ObtenerDetalleSolicitudPendiente(IdTienda);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Aceptar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await TiendaService.AceptarSolicitud(IdTienda);
+            Navigation.NavigateTo("/administracion/solicitudes-tiendas");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para revisar esta solicitud.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _error = "La solicitud no existe o ya no está pendiente.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la operación.";
+        }
+    }
+}

@@ -54,36 +54,30 @@
                                   Required="true"
                                   RequiredError="Ingresá el nombre de la tienda." />
 
-                    <MudSelect T="int?"
-                               Value="_modelo.IdProvincia"
-                               ValueChanged="CambiarProvincia"
-                               Label="Provincia"
-                               Variant="Variant.Outlined"
-                               Required="true"
-                               RequiredError="Seleccioná una provincia.">
-                        @foreach (ProvinciaResponse provincia in _provincias)
-                        {
-                            <MudSelectItem T="int?" Value="@((int?)provincia.Id)">
-                                @provincia.Nombre
-                            </MudSelectItem>
-                        }
-                    </MudSelect>
+                    <MudAutocomplete T="int?"
+                                     Value="_modelo.IdProvincia"
+                                     ValueChanged="CambiarProvincia"
+                                     SearchFunc="BuscarProvincias"
+                                     ToStringFunc="MostrarProvincia"
+                                     Label="Provincia"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText="true"
+                                     Required="true"
+                                     RequiredError="Seleccioná una provincia." />
 
-                    <MudSelect T="int?"
-                               @key="_modelo.IdProvincia"
-                               @bind-Value="_modelo.IdCiudad"
-                               Label="Ciudad"
-                               Variant="Variant.Outlined"
-                               Disabled="_modelo.IdProvincia is null || _cargandoCiudades"
-                               Required="true"
-                               RequiredError="Seleccioná una ciudad.">
-                        @foreach (CiudadResponse ciudad in _ciudades)
-                        {
-                            <MudSelectItem T="int?" Value="@((int?)ciudad.Id)">
-                                @ciudad.Nombre
-                            </MudSelectItem>
-                        }
-                    </MudSelect>
+                    <MudAutocomplete T="int?"
+                                     @key="_modelo.IdProvincia"
+                                     @bind-Value="_modelo.IdCiudad"
+                                     SearchFunc="BuscarCiudades"
+                                     ToStringFunc="MostrarCiudad"
+                                     Label="Ciudad"
+                                     Variant="Variant.Outlined"
+                                     Disabled="_modelo.IdProvincia is null || _cargandoCiudades"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText="true"
+                                     Required="true"
+                                     RequiredError="Seleccioná una ciudad." />
 
                     @if (_cargandoCiudades)
                     {
@@ -238,6 +232,40 @@
         {
             _cargando = false;
         }
+    }
+
+    private Task<IEnumerable<int?>> BuscarProvincias(string texto, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        List<int?> resultados = _provincias
+            .Where(p => string.IsNullOrWhiteSpace(texto) || p.Nombre.Contains(texto.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(p => (int?)p.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<int?>>(resultados);
+    }
+
+    private Task<IEnumerable<int?>> BuscarCiudades(string texto, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        List<int?> resultados = _ciudades
+            .Where(c => string.IsNullOrWhiteSpace(texto) || c.Nombre.Contains(texto.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(c => (int?)c.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<int?>>(resultados);
+    }
+
+    private string MostrarProvincia(int? idProvincia)
+    {
+        return _provincias.FirstOrDefault(p => p.Id == idProvincia)?.Nombre ?? string.Empty;
+    }
+
+    private string MostrarCiudad(int? idCiudad)
+    {
+        return _ciudades.FirstOrDefault(c => c.Id == idCiudad)?.Nombre ?? string.Empty;
     }
 
     private async Task CambiarProvincia(int? idProvincia)

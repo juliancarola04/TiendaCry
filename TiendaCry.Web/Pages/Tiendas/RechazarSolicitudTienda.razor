@@ -1,0 +1,175 @@
+@page "/administracion/solicitudes-tiendas/{IdTienda:int}/rechazar"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Request
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Shared.ViewModels.Tienda
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Rechazar solicitud de tienda</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            Motivo del rechazo
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_error
+                </MudAlert>
+            }
+
+            @if (_solicitud is not null)
+            {
+                <MudText>@_solicitud.Nombre</MudText>
+
+                <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando">
+                    <MudStack Spacing="4">
+                        <MudTextField T="string"
+                                      @bind-Value="_modelo.MotivoRechazo"
+                                      Label="Motivo del rechazo"
+                                      Variant="Variant.Outlined"
+                                      Lines="6"
+                                      Required="true"
+                                      RequiredError="Ingresá el motivo del rechazo." />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_procesando"
+                                   OnClick="Enviar">
+                            @(_procesando ? "Enviando..." : "Enviar")
+                        </MudButton>
+                    </MudStack>
+                </MudForm>
+            }
+            else
+            {
+                <MudButton OnClick="CargarSolicitud" Color="Color.Primary">
+                    Reintentar
+                </MudButton>
+            }
+        }
+
+        <MudButton Href="@($"/administracion/solicitudes-tiendas/{IdTienda}")"
+                   Color="Color.Primary"
+                   Disabled="_procesando">
+            Cancelar
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private readonly RechazarSolicitudTiendaViewModel _modelo = new RechazarSolicitudTiendaViewModel();
+    private DetalleTiendaResponse? _solicitud;
+    private MudForm _formulario = null!;
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _modelo.MotivoRechazo = string.Empty;
+        await CargarSolicitud();
+    }
+
+    private async Task CargarSolicitud()
+    {
+        _cargando = true;
+        _error = null;
+        _solicitud = null;
+
+        try
+        {
+            _solicitud = await TiendaService.ObtenerDetalleSolicitudPendiente(IdTienda);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            RechazarSolicitudTiendaRequest request = new RechazarSolicitudTiendaRequest(_modelo.MotivoRechazo);
+            await TiendaService.RechazarSolicitud(IdTienda, request);
+            Navigation.NavigateTo("/administracion/solicitudes-tiendas");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _solicitud = null;
+            _error = "No tenés permiso para revisar esta solicitud.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _solicitud = null;
+            _error = "La solicitud no existe o ya no está pendiente.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la operación.";
+        }
+    }
+}

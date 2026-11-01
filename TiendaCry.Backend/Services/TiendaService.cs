@@ -78,7 +78,28 @@ namespace TiendaCry.Backend.Services
 
             List<Tienda> tiendas = await _tiendaRepository.ObtenerSolicitudesPendientes();
 
-            return tiendas.Select(t => new SolicitudTiendaPendienteResponse(t.Id, t.Nombre, t.FechaSolicitud)).ToList();
+            return tiendas.Select(t => new SolicitudTiendaPendienteResponse(t.Id, t.Nombre)).ToList();
+        }
+
+        public async Task<DetalleTiendaResponse?> ObtenerDetalleSolicitudPendiente(int idTienda, int idUsuario)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            Tienda? tienda = await _tiendaRepository.BuscarSolicitudPendiente(idTienda);
+
+            if (tienda is null)
+            {
+                return null;
+            }
+
+            return new DetalleTiendaResponse(
+                tienda.Id,
+                tienda.Nombre,
+                tienda.Ciudad.Provincia.Nombre,
+                tienda.Ciudad.Nombre,
+                tienda.Categoria.Nombre,
+                tienda.Calle,
+                tienda.NumCalle);
         }
 
         public async Task<List<SolicitudTiendaResponse>> ObtenerSolicitudes(int idUsuario)
@@ -271,6 +292,94 @@ namespace TiendaCry.Backend.Services
             await _tiendaRepository.GuardarCambios();
 
             return new SolicitudTiendaResponse(tienda.Id, tienda.Nombre, "PendienteRevision", null);
+        }
+
+        public async Task<bool> AceptarSolicitud(int idTienda, int idUsuario)
+        {
+            return await ResolverSolicitud(idTienda, idUsuario, "Aprobada", null);
+        }
+
+        public async Task<bool> RechazarSolicitud(int idTienda, int idUsuario, RechazarSolicitudTiendaRequest request)
+        {
+            if (!Validaciones.EstanDatosBien(request.MotivoRechazo))
+            {
+                throw new DatosLlegaronErradosException("Ingresá el motivo del rechazo.");
+            }
+
+            return await ResolverSolicitud(idTienda, idUsuario, "Rechazada", request.MotivoRechazo.Trim());
+        }
+
+        private async Task<bool> ResolverSolicitud(int idTienda, int idUsuario, string estado, string? motivoRechazo)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            Tienda? tienda = await _tiendaRepository.BuscarSolicitudPendienteParaRevision(idTienda);
+
+            if (tienda is null)
+            {
+                return false;
+            }
+
+            int? idEstado = await _tiendaRepository.ObtenerIdEstadoTienda(estado);
+
+            if (idEstado is null)
+            {
+                throw new InvalidOperationException($"No está configurado el estado {estado} de tienda.");
+            }
+
+            tienda.IdEstadoTienda = idEstado.Value;
+            tienda.FechaRevision = DateTime.UtcNow;
+            tienda.MotivoRechazo = motivoRechazo;
+
+            await _tiendaRepository.GuardarCambios();
+
+            return true;
+        }
+
+        public async Task<bool> DarDeBaja(int idTienda, int idUsuario)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            Tienda? tienda = await _tiendaRepository.BuscarTiendaAprobadaParaBaja(idTienda);
+
+            if (tienda is null)
+            {
+                return false;
+            }
+
+            int? idEstadoTiendaBaja = await _tiendaRepository.ObtenerIdEstadoTienda("Baja");
+            int? idEstadoUsuarioTiendaBaja = await _tiendaRepository.ObtenerIdEstadoUsuarioTienda("Baja");
+            int? idEstadoPromocionCancelada = await _tiendaRepository.ObtenerIdEstadoPromocion("Cancelada");
+
+            if (idEstadoTiendaBaja is null || idEstadoUsuarioTiendaBaja is null || idEstadoPromocionCancelada is null)
+            {
+                throw new InvalidOperationException("No están configurados los estados necesarios para dar de baja la tienda.");
+            }
+
+            DateTime ahora = DateTime.UtcNow;
+
+            tienda.IdEstadoTienda = idEstadoTiendaBaja.Value;
+
+            foreach (UsuarioTienda vinculacion in tienda.UsuariosTienda)
+            {
+                if (vinculacion.EstadoUsuarioTienda.Nombre == "Activo")
+                {
+                    vinculacion.IdEstadoUsuarioTienda = idEstadoUsuarioTiendaBaja.Value;
+                    vinculacion.FechaBaja = ahora;
+                }
+            }
+
+            foreach (Promocion promocion in tienda.Promociones)
+            {
+                if (promocion.EstadoPromocion.Nombre == "Aprobada" || promocion.EstadoPromocion.Nombre == "PendienteRevision")
+                {
+                    promocion.IdEstadoPromocion = idEstadoPromocionCancelada.Value;
+                }
+            }
+
+            await _tiendaRepository.GuardarCambios();
+
+            return true;
         }
 
         private async Task ValidarAdministrador(int idUsuario)

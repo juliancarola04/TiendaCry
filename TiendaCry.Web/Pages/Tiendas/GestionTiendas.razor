@@ -6,6 +6,7 @@
 @using TiendaCry.Web.Services
 @inject TiendaService TiendaService
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <PageTitle>Gestión de tiendas</PageTitle>
 
@@ -62,6 +63,13 @@
                                            Color="Color.Primary"
                                            aria-label="@($"Ver detalles de {tienda.Nombre}")" />
                         </MudTooltip>
+                        <MudTooltip Text="Dar de baja">
+                            <MudIconButton OnClick="() => DarDeBaja(tienda)"
+                                           Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Error"
+                                           Disabled="_procesando"
+                                           aria-label="@($"Dar de baja {tienda.Nombre}")" />
+                        </MudTooltip>
                     </MudTd>
                 </RowTemplate>
 
@@ -80,11 +88,73 @@
 @code {
     private List<TiendaActivaResponse> _tiendas = new List<TiendaActivaResponse>();
     private bool _cargando = true;
+    private bool _procesando;
     private string? _error;
 
     protected override async Task OnInitializedAsync()
     {
         await CargarTiendas();
+    }
+
+    private async Task DarDeBaja(TiendaActivaResponse tienda)
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync(
+                "Dar de baja la tienda",
+                $"¿Querés dar de baja «{tienda.Nombre}»? Sus vinculaciones activas se darán de baja y sus promociones aprobadas o pendientes se cancelarán.",
+                yesText: "Dar de baja",
+                cancelText: "Cancelar");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            _error = null;
+
+            await TiendaService.DarDeBaja(tienda.Id);
+
+            _tiendas.RemoveAll(t => t.Id == tienda.Id);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para dar de baja tiendas.";
+            }
+            else if (e.StatusCode == HttpStatusCode.NotFound)
+            {
+                _error = "La tienda no existe o ya no está aprobada.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo dar de baja la tienda.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
     }
 
     private async Task CargarTiendas()

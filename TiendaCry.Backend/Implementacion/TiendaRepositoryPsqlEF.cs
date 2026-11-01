@@ -58,6 +58,56 @@ namespace TiendaCry.Backend.Implementacion
                 .FirstOrDefaultAsync(t => t.Id == idTienda && t.EstadoTienda.Nombre == "Aprobada");
         }
 
+        public async Task<Tienda?> BuscarTiendaAprobadaParaBaja(int idTienda)
+        {
+            return await _dataContext.Tiendas
+                .Include(t => t.UsuariosTienda)
+                    .ThenInclude(ut => ut.EstadoUsuarioTienda)
+                .Include(t => t.Promociones)
+                    .ThenInclude(p => p.EstadoPromocion)
+                .FirstOrDefaultAsync(t => t.Id == idTienda && t.EstadoTienda.Nombre == "Aprobada");
+        }
+
+        public async Task<int?> ObtenerIdEstadoUsuarioTienda(string nombre)
+        {
+            return await _dataContext.EstadosUsuarioTienda
+                .Where(e => e.Nombre == nombre)
+                .Select(e => (int?)e.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<int?> ObtenerIdEstadoPromocion(string nombre)
+        {
+            return await _dataContext.EstadosPromocion
+                .Where(e => e.Nombre == nombre)
+                .Select(e => (int?)e.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Tienda?> BuscarSolicitudPendiente(int idTienda)
+        {
+            return await _dataContext.Tiendas
+                .AsNoTracking()
+                .Include(t => t.Ciudad)
+                    .ThenInclude(c => c.Provincia)
+                .Include(t => t.Categoria)
+                .FirstOrDefaultAsync(t => t.Id == idTienda && t.EstadoTienda.Nombre == "PendienteRevision");
+        }
+
+        public async Task<Tienda?> BuscarSolicitudPendienteParaRevision(int idTienda)
+        {
+            return await _dataContext.Tiendas
+                .FirstOrDefaultAsync(t => t.Id == idTienda && t.EstadoTienda.Nombre == "PendienteRevision");
+        }
+
+        public async Task<int?> ObtenerIdEstadoTienda(string nombre)
+        {
+            return await _dataContext.EstadosTienda
+                .Where(e => e.Nombre == nombre)
+                .Select(e => (int?)e.Id)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<bool> TieneTiendaComoAdministrador(int idUsuario)
         {
             return await _dataContext.UsuariosTienda
