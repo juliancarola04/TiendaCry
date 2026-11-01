@@ -35,6 +35,7 @@ namespace TiendaCry.Backend.Data
             modelBuilder.ApplyConfiguration(new PagoMembresiaMercadoPagoConfiguracion());
             modelBuilder.ApplyConfiguration(new TiendaConfiguracion());
             modelBuilder.ApplyConfiguration(new PromocionConfiguracion());
+            modelBuilder.ApplyConfiguration(new ImagenConfiguracion());
             modelBuilder.ApplyConfiguration(new UsoPromocionConfiguracion());
             modelBuilder.ApplyConfiguration(new UsuarioTiendaConfiguracion());
         }
@@ -61,6 +62,7 @@ namespace TiendaCry.Backend.Data
         public DbSet<PagoMembresiaMercadoPago> PagosMembresiaMercadoPago { get; set; }
         public DbSet<Tienda> Tiendas { get; set; }
         public DbSet<Promocion> Promociones { get; set; }
+        public DbSet<Imagen> Imagenes { get; set; }
         public DbSet<UsoPromocion> UsosPromocion { get; set; }
         public DbSet<UsuarioTienda> UsuariosTienda { get; set; }
 

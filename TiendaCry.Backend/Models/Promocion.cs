@@ -5,7 +5,6 @@ namespace TiendaCry.Backend.Models
         public int Id { get; set; }
         public required string Titulo { get; set; }
         public required string Descripcion { get; set; }
-        public required string DireccionImagen { get; set; }
         public DateTime FechaInicio { get; set; }
         public DateTime FechaFin { get; set; }
         public DateTime FechaSolicitud { get; set; }
@@ -16,6 +15,7 @@ namespace TiendaCry.Backend.Models
 
         public Tienda Tienda { get; set; } = null!;
         public EstadoPromocion EstadoPromocion { get; set; } = null!;
+        public Imagen? Imagen { get; set; }
 
         public ICollection<UsoPromocion> UsosPromocion { get; set; } = new List<UsoPromocion>();
     }

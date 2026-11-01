@@ -25,9 +25,6 @@ namespace TiendaCry.Backend.Data.Configuraciones
             builder.Property(p => p.Descripcion)
                 .IsRequired();
 
-            builder.Property(p => p.DireccionImagen)
-                .IsRequired();
-
             builder.Property(p => p.FechaInicio)
                 .IsRequired()
                 .HasColumnType("timestamp with time zone");
