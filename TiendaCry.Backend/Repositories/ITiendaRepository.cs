@@ -5,6 +5,9 @@ namespace TiendaCry.Backend.Repositories
     public interface ITiendaRepository
     {
         Task<List<Tienda>> ObtenerSolicitudesPorUsuario(int idUsuario);
+        Task<List<Tienda>> ObtenerSolicitudesPendientes();
+        Task<List<Tienda>> ObtenerTiendasAprobadas();
+        Task<Tienda?> BuscarTiendaAprobada(int idTienda);
         Task<bool> TieneTiendaComoAdministrador(int idUsuario);
         Task<Tienda?> BuscarTiendaActivaPorAdministrador(int idUsuario);
         Task<bool> ExisteCiudad(int idCiudad);

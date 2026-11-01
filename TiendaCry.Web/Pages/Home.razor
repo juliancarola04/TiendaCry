@@ -30,9 +30,55 @@
         {
             <AuthorizeView Roles="@RolesUsuario.AdministradorTiendaCry">
                 <Authorized>
-                    <MudText Typo="Typo.h5" HtmlTag="h1">
-                        Administración de TiendaCry
-                    </MudText>
+                    <MudContainer MaxWidth="MaxWidth.Small">
+                        <MudStack Spacing="5">
+                            <MudText Typo="Typo.h4" HtmlTag="h1" Align="Align.Center">
+                                Panel de administrador
+                            </MudText>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="true">
+                                Gestionar administradores
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="true">
+                                Gestionar usuarios
+                            </MudButton>
+
+                            <MudButton Href="/administracion/tiendas"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true">
+                                Gestionar tiendas
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="true">
+                                Gestionar promociones
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="true">
+                                Gestionar cupones
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="true">
+                                Ver estadísticas de tiendas
+                            </MudButton>
+                        </MudStack>
+                    </MudContainer>
                 </Authorized>
             </AuthorizeView>
         }

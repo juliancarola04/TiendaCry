@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TiendaCry.Backend.Excepciones;
 using TiendaCry.Backend.Services;
 using TiendaCry.Shared.DTO.Tienda.Response;
+using TiendaCry.Shared.Auth;
 
 namespace TiendaCry.Backend.Controllers
 {
@@ -33,6 +34,80 @@ namespace TiendaCry.Backend.Controllers
                 {
                     return NoContent();
                 }
+
+                return Ok(response);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpGet("aprobadas")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<ActionResult<List<TiendaActivaResponse>>> ObtenerTiendasAprobadas()
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                List<TiendaActivaResponse> response = await _tiendaService.ObtenerTiendasAprobadas(idUsuario);
+
+                return Ok(response);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpGet("aprobadas/{idTienda:int}")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<ActionResult<DetalleTiendaResponse>> ObtenerDetalleTiendaAprobada(int idTienda)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                DetalleTiendaResponse? response = await _tiendaService.ObtenerDetalleTiendaAprobada(idTienda, idUsuario);
+
+                if (response is null)
+                {
+                    return NotFound("La tienda no existe o ya no está aprobada.");
+                }
+
+                return Ok(response);
+            }
+            catch (CredencialesInvalidasException e)
+            {
+                return Unauthorized(e.Message);
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
+        [HttpGet("solicitudes/pendientes")]
+        [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+        public async Task<ActionResult<List<SolicitudTiendaPendienteResponse>>> ObtenerSolicitudesPendientes()
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                List<SolicitudTiendaPendienteResponse> response = await _tiendaService.ObtenerSolicitudesPendientes(idUsuario);
 
                 return Ok(response);
             }

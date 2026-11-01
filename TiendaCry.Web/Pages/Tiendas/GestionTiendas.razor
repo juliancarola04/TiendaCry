@@ -1,0 +1,127 @@
+@page "/administracion/tiendas"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de tiendas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true"
+                  Justify="Justify.SpaceBetween"
+                  AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" HtmlTag="h1">
+                Gestión de tiendas
+            </MudText>
+
+            <MudTooltip Text="Ver solicitudes pendientes">
+                <MudIconButton Href="/administracion/solicitudes-tiendas"
+                               Icon="@Icons.Material.Filled.FactCheck"
+                               Color="Color.Primary"
+                               aria-label="Ver solicitudes pendientes" />
+            </MudTooltip>
+        </MudStack>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+
+            <MudButton OnClick="CargarTiendas" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else
+        {
+            <MudTable T="TiendaActivaResponse"
+                      Items="_tiendas"
+                      Hover="true">
+                <HeaderContent>
+                    <MudTh>Tienda</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+
+                <RowTemplate Context="tienda">
+                    <MudTd DataLabel="Tienda">
+                        @tienda.Nombre
+                    </MudTd>
+
+                    <MudTd DataLabel="Acciones">
+                        <MudTooltip Text="Ver detalles">
+                            <MudIconButton Href="@($"/administracion/tiendas/{tienda.Id}")"
+                                           Icon="@Icons.Material.Filled.FindInPage"
+                                           Color="Color.Primary"
+                                           aria-label="@($"Ver detalles de {tienda.Nombre}")" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    <MudText>No hay tiendas aprobadas.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/" Color="Color.Primary">
+            Volver al panel
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<TiendaActivaResponse> _tiendas = new List<TiendaActivaResponse>();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTiendas();
+    }
+
+    private async Task CargarTiendas()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _tiendas = await TiendaService.ObtenerTiendasAprobadas();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para gestionar tiendas.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron cargar las tiendas.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

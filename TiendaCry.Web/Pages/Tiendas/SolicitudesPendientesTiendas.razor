@@ -1,0 +1,110 @@
+@page "/administracion/solicitudes-tiendas"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Solicitudes pendientes de tiendas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            Solicitudes pendientes de tiendas
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">
+                @_error
+            </MudAlert>
+
+            <MudButton OnClick="CargarSolicitudes" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else
+        {
+            <MudTable T="SolicitudTiendaPendienteResponse"
+                      Items="_solicitudes"
+                      Hover="true">
+                <HeaderContent>
+                    <MudTh>Tienda</MudTh>
+                    <MudTh>Fecha de solicitud</MudTh>
+                </HeaderContent>
+
+                <RowTemplate Context="solicitud">
+                    <MudTd DataLabel="Tienda">
+                        @solicitud.Nombre
+                    </MudTd>
+                    <MudTd DataLabel="Fecha de solicitud">
+                        @solicitud.FechaSolicitud.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    </MudTd>
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    <MudText>No hay solicitudes pendientes.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/administracion/tiendas" Color="Color.Primary">
+            Volver a gestión de tiendas
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<SolicitudTiendaPendienteResponse> _solicitudes = new List<SolicitudTiendaPendienteResponse>();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSolicitudes();
+    }
+
+    private async Task CargarSolicitudes()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _solicitudes = await TiendaService.ObtenerSolicitudesPendientes();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para revisar solicitudes de tiendas.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron cargar las solicitudes pendientes.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

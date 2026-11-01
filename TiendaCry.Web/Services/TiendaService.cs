@@ -34,6 +34,54 @@ public class TiendaService
         return tienda;
     }
 
+    public async Task<List<TiendaActivaResponse>> ObtenerTiendasAprobadas()
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/tiendas/aprobadas"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        List<TiendaActivaResponse>? tiendas = await respuesta.Content.ReadFromJsonAsync<List<TiendaActivaResponse>>();
+
+        if (tiendas is null)
+        {
+            throw new InvalidOperationException("No se pudieron obtener las tiendas aprobadas.");
+        }
+
+        return tiendas;
+    }
+
+    public async Task<DetalleTiendaResponse> ObtenerDetalleTiendaAprobada(int idTienda)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, $"api/tiendas/aprobadas/{idTienda}"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        DetalleTiendaResponse? tienda = await respuesta.Content.ReadFromJsonAsync<DetalleTiendaResponse>();
+
+        if (tienda is null)
+        {
+            throw new InvalidOperationException("No se pudieron obtener los detalles de la tienda.");
+        }
+
+        return tienda;
+    }
+
+    public async Task<List<SolicitudTiendaPendienteResponse>> ObtenerSolicitudesPendientes()
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/tiendas/solicitudes/pendientes"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        List<SolicitudTiendaPendienteResponse>? solicitudes = await respuesta.Content.ReadFromJsonAsync<List<SolicitudTiendaPendienteResponse>>();
+
+        if (solicitudes is null)
+        {
+            throw new InvalidOperationException("No se pudieron obtener las solicitudes pendientes.");
+        }
+
+        return solicitudes;
+    }
+
     public async Task<List<SolicitudTiendaResponse>> ObtenerSolicitudes()
     {
         using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/tiendas/solicitudes"));

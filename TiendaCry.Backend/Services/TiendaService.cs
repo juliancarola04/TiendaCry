@@ -42,6 +42,45 @@ namespace TiendaCry.Backend.Services
             return new TiendaActivaResponse(tienda.Id, tienda.Nombre);
         }
 
+        public async Task<List<TiendaActivaResponse>> ObtenerTiendasAprobadas(int idUsuario)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            List<Tienda> tiendas = await _tiendaRepository.ObtenerTiendasAprobadas();
+
+            return tiendas.Select(t => new TiendaActivaResponse(t.Id, t.Nombre)).ToList();
+        }
+
+        public async Task<DetalleTiendaResponse?> ObtenerDetalleTiendaAprobada(int idTienda, int idUsuario)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            Tienda? tienda = await _tiendaRepository.BuscarTiendaAprobada(idTienda);
+
+            if (tienda is null)
+            {
+                return null;
+            }
+
+            return new DetalleTiendaResponse(
+                tienda.Id,
+                tienda.Nombre,
+                tienda.Ciudad.Provincia.Nombre,
+                tienda.Ciudad.Nombre,
+                tienda.Categoria.Nombre,
+                tienda.Calle,
+                tienda.NumCalle);
+        }
+
+        public async Task<List<SolicitudTiendaPendienteResponse>> ObtenerSolicitudesPendientes(int idUsuario)
+        {
+            await ValidarAdministrador(idUsuario);
+
+            List<Tienda> tiendas = await _tiendaRepository.ObtenerSolicitudesPendientes();
+
+            return tiendas.Select(t => new SolicitudTiendaPendienteResponse(t.Id, t.Nombre, t.FechaSolicitud)).ToList();
+        }
+
         public async Task<List<SolicitudTiendaResponse>> ObtenerSolicitudes(int idUsuario)
         {
             Usuario? usuario = await _usuarioRepository.BuscarPorId(idUsuario);
@@ -232,6 +271,26 @@ namespace TiendaCry.Backend.Services
             await _tiendaRepository.GuardarCambios();
 
             return new SolicitudTiendaResponse(tienda.Id, tienda.Nombre, "PendienteRevision", null);
+        }
+
+        private async Task ValidarAdministrador(int idUsuario)
+        {
+            Usuario? usuario = await _usuarioRepository.BuscarPorId(idUsuario);
+
+            if (usuario is null)
+            {
+                throw new CredencialesInvalidasException();
+            }
+
+            if (!usuario.EsAdministradorTiendaCry)
+            {
+                throw new SinPermisoException("No tenés permiso para gestionar tiendas.");
+            }
+
+            if (!usuario.EmailVerificado)
+            {
+                throw new SinPermisoException("Verificá tu correo para gestionar tiendas.");
+            }
         }
     }
 }

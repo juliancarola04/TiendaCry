@@ -28,6 +28,36 @@ namespace TiendaCry.Backend.Implementacion
                 .OrderByDescending(t => t.FechaSolicitud)
                 .ToListAsync();
         }
+        public async Task<List<Tienda>> ObtenerSolicitudesPendientes()
+        {
+            return await _dataContext.Tiendas
+                .AsNoTracking()
+                .Where(t => t.EstadoTienda.Nombre == "PendienteRevision")
+                .OrderBy(t => t.FechaSolicitud)
+                .ThenBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<List<Tienda>> ObtenerTiendasAprobadas()
+        {
+            return await _dataContext.Tiendas
+                .AsNoTracking()
+                .Where(t => t.EstadoTienda.Nombre == "Aprobada")
+                .OrderBy(t => t.Nombre)
+                .ThenBy(t => t.Id)
+                .ToListAsync();
+        }
+
+        public async Task<Tienda?> BuscarTiendaAprobada(int idTienda)
+        {
+            return await _dataContext.Tiendas
+                .AsNoTracking()
+                .Include(t => t.Ciudad)
+                    .ThenInclude(c => c.Provincia)
+                .Include(t => t.Categoria)
+                .FirstOrDefaultAsync(t => t.Id == idTienda && t.EstadoTienda.Nombre == "Aprobada");
+        }
+
         public async Task<bool> TieneTiendaComoAdministrador(int idUsuario)
         {
             return await _dataContext.UsuariosTienda
