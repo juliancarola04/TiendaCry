@@ -23,11 +23,29 @@ public static class MauiProgram
 		builder.Services.AddSingleton<AlmacenamientoTokensService>();
 		builder.Services.AddHttpClient("TiendaCry", cliente =>
 		{
+#if DEBUG
+			cliente.BaseAddress = new Uri("https://10.0.2.2:7283/");
+#else
 			cliente.BaseAddress = new Uri("https://tiendacry-backend.runasp.net/");
+#endif
 		})
-		.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+		.ConfigurePrimaryHttpMessageHandler(() =>
 		{
-			UseCookies = false
+			HttpClientHandler handler = new HttpClientHandler
+			{
+				UseCookies = false
+			};
+
+#if DEBUG
+			handler.ServerCertificateCustomValidationCallback = (solicitud, certificado, cadena, errores) =>
+			{
+				return errores == System.Net.Security.SslPolicyErrors.None
+					|| (solicitud.RequestUri?.Host == "10.0.2.2"
+						&& certificado?.GetNameInfo(System.Security.Cryptography.X509Certificates.X509NameType.DnsName, false) == "localhost");
+			};
+#endif
+
+			return handler;
 		});
 		builder.Services.AddScoped<AutenticacionService>();
 		builder.Services.AddAuthorizationCore();
