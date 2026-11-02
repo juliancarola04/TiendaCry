@@ -1,0 +1,187 @@
+﻿@page "/administracion/promociones/tiendas/{IdTienda:int}/{IdPromocion:int}/rechazar"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Promocion.Request
+@using TiendaCry.Shared.DTO.Promocion.Response
+@using TiendaCry.Shared.ViewModels.Promocion
+@using TiendaCry.Web.Services
+@inject PromocionService PromocionService
+@inject NavigationManager Navigation
+
+<PageTitle>Rechazar promoción</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">
+            Motivo del rechazo
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_error
+                </MudAlert>
+            }
+
+            @if (_promocion is not null)
+            {
+                <MudText>@_promocion.Titulo</MudText>
+
+                <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando">
+                    <MudStack Spacing="4">
+                        <MudTextField T="string"
+                                      @bind-Value="_modelo.MotivoRechazo"
+                                      Label="Motivo del rechazo"
+                                      Variant="Variant.Outlined"
+                                      Lines="6"
+                                      Required="true"
+                                      RequiredError="Ingresá el motivo del rechazo." />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_procesando"
+                                   OnClick="Enviar">
+                            @(_procesando ? "Enviando..." : "Enviar")
+                        </MudButton>
+                    </MudStack>
+                </MudForm>
+            }
+            else
+            {
+                <MudButton OnClick="CargarPromocion" Color="Color.Primary">
+                    Reintentar
+                </MudButton>
+            }
+        }
+
+        <MudButton Href="@($"/administracion/promociones/tiendas/{IdTienda}/{IdPromocion}/revision")"
+                   Color="Color.Primary"
+                   Disabled="_procesando">
+            Cancelar
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    [Parameter]
+    public int IdPromocion { get; set; }
+
+    private readonly RechazarPromocionViewModel _modelo = new RechazarPromocionViewModel();
+    private DetallePromocionResponse? _promocion;
+    private MudForm _formulario = null!;
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+    private int? _idTiendaCargada;
+    private int? _idPromocionCargada;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_idTiendaCargada == IdTienda && _idPromocionCargada == IdPromocion)
+        {
+            return;
+        }
+
+        _idTiendaCargada = IdTienda;
+        _idPromocionCargada = IdPromocion;
+        _modelo.MotivoRechazo = string.Empty;
+        await CargarPromocion();
+    }
+
+    private async Task CargarPromocion()
+    {
+        _cargando = true;
+        _error = null;
+        _promocion = null;
+
+        try
+        {
+            _promocion = await PromocionService.ObtenerDetalle(IdTienda, IdPromocion);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            RevisarPromocionRequest request = new RevisarPromocionRequest(false, _modelo.MotivoRechazo);
+            await PromocionService.Revisar(IdTienda, IdPromocion, request);
+            Navigation.NavigateTo("/administracion/promociones/pendientes");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _promocion = null;
+            _error = "No tenés permiso para rechazar esta promoción.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _promocion = null;
+            _error = "La promoción no existe.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la operación.";
+        }
+    }
+}

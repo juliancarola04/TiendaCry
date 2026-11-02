@@ -22,6 +22,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, EstadoAutenticacionProvider>();
 builder.Services.AddScoped<TiendaService>();
+builder.Services.AddScoped<PromocionService>();
 builder.Services.AddScoped<EmpleadoService>();
 builder.Services.AddScoped<ProvinciaService>();
 builder.Services.AddScoped<CategoriaService>();

@@ -108,6 +108,20 @@ namespace TiendaCry.Backend.Implementacion
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<bool> PuedeAdministrar(int idTienda, int idUsuario)
+        {
+            return await _dataContext.UsuariosTienda
+                .AnyAsync(ut => ut.IdTienda == idTienda
+                    && ut.IdUsuario == idUsuario
+                    && ut.RolTienda.Nombre == "Administrador"
+                    && ut.EstadoUsuarioTienda.Nombre == "Activo"
+                    && ut.FechaBaja == null
+                    && ut.Tienda.EstadoTienda.Nombre == "Aprobada"
+                    && ut.Usuario.EstadoUsuario.Nombre == "Activo"
+                    && ut.Usuario.EmailVerificado
+                    && !ut.Usuario.DebeCambiarContrasena);
+        }
+
         public async Task<bool> TieneTiendaComoAdministrador(int idUsuario)
         {
             return await _dataContext.UsuariosTienda

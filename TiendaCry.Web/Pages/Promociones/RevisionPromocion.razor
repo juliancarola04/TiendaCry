@@ -1,0 +1,165 @@
+﻿@page "/administracion/promociones/tiendas/{IdTienda:int}/{IdPromocion:int}/revision"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Promocion.Request
+@using TiendaCry.Shared.DTO.Promocion.Response
+@using TiendaCry.Web.Services
+@inject PromocionService PromocionService
+@inject NavigationManager Navigation
+
+<PageTitle>Revisar promoción</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+            Detalles de la promoción
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_detalle is not null)
+        {
+            <DatosPromocion Detalle="_detalle" />
+
+            <MudStack Row="true" Spacing="3">
+                <MudButton OnClick="Aceptar"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_procesando">
+                    @(_procesando ? "Procesando..." : "Aceptar")
+                </MudButton>
+
+                <MudButton Href="@($"/administracion/promociones/tiendas/{IdTienda}/{IdPromocion}/rechazar")"
+                           Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           Disabled="_procesando">
+                    Rechazar
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudButton OnClick="CargarDetalle">Reintentar</MudButton>
+        }
+
+        <MudButton Href="/administracion/promociones/pendientes" Disabled="_procesando">
+            Volver a pendientes
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    [Parameter]
+    public int IdPromocion { get; set; }
+
+    private DetallePromocionResponse? _detalle;
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+    private int? _idTiendaCargada;
+    private int? _idPromocionCargada;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_idTiendaCargada == IdTienda && _idPromocionCargada == IdPromocion)
+        {
+            return;
+        }
+
+        _idTiendaCargada = IdTienda;
+        _idPromocionCargada = IdPromocion;
+
+        await CargarDetalle();
+    }
+
+    private async Task CargarDetalle()
+    {
+        _cargando = true;
+        _error = null;
+        _detalle = null;
+
+        try
+        {
+            _detalle = await PromocionService.ObtenerDetalle(IdTienda, IdPromocion);
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Aceptar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            RevisarPromocionRequest request = new RevisarPromocionRequest(true, null);
+
+            await PromocionService.Revisar(IdTienda, IdPromocion, request);
+
+            Navigation.NavigateTo("/administracion/promociones/pendientes");
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para revisar promociones.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _error = "La promoción no existe.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la solicitud.";
+        }
+    }
+}

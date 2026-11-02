@@ -520,3 +520,6 @@ http-client.private.env.json
 .idea/**/copilot.data.migration.*.xml
 
 .vscode
+
+TiendaCry.Backend/Logs/
+TiendaCry.Backend/wwwroot/uploads/

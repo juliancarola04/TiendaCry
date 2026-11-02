@@ -1,0 +1,107 @@
+﻿@page "/administracion/promociones"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Tienda.Response
+@using TiendaCry.Web.Services
+@inject TiendaService TiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de promociones</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" HtmlTag="h1">Gestión de promociones</MudText>
+
+            <MudTooltip Text="Promociones pendientes">
+                <MudIconButton Href="/administracion/promociones/pendientes"
+                               Icon="@Icons.Material.Filled.FactCheck"
+                               Color="Color.Primary"
+                               aria-label="Promociones pendientes" />
+            </MudTooltip>
+        </MudStack>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarTiendas">Reintentar</MudButton>
+        }
+        else
+        {
+            <MudText>Seleccioná una tienda</MudText>
+
+            <MudTable T="TiendaActivaResponse" Items="_tiendas" Hover="true">
+                <RowTemplate Context="tienda">
+                    <MudTd DataLabel="Tienda">@tienda.Nombre</MudTd>
+                    <MudTd>
+                        <MudTooltip Text="Ver promociones">
+                            <MudIconButton Href="@($"/administracion/promociones/tiendas/{tienda.Id}")"
+                                           Icon="@Icons.Material.Filled.LocalOffer"
+                                           Color="Color.Primary"
+                                           aria-label="Ver promociones" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText>No hay tiendas aprobadas.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<TiendaActivaResponse> _tiendas = new List<TiendaActivaResponse>();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTiendas();
+    }
+
+    private async Task CargarTiendas()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _tiendas = await TiendaService.ObtenerTiendasAprobadas();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para gestionar promociones.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron obtener las tiendas.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

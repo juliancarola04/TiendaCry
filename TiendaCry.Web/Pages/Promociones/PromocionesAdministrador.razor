@@ -1,0 +1,208 @@
+﻿@page "/administracion/promociones/tiendas/{IdTienda:int}"
+@page "/administracion/promociones/pendientes"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Promocion.Response
+@using TiendaCry.Web.Services
+@inject PromocionService PromocionService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>@Titulo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">@Titulo</MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarPromociones">Reintentar</MudButton>
+        }
+        else
+        {
+            <MudTable T="PromocionAdministradorResponse" Items="_promociones" Hover="true">
+                <RowTemplate Context="promocion">
+                    <MudTd DataLabel="Imagen">
+                        @if (!string.IsNullOrWhiteSpace(promocion.UrlImagen))
+                        {
+                            <MudImage Src="@promocion.UrlImagen"
+                                      Alt="@promocion.Titulo"
+                                      Width="180"
+                                      Height="120"
+                                      ObjectFit="ObjectFit.Contain" />
+                        }
+                        else
+                        {
+                            <MudText>Sin imagen</MudText>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="Promoción">
+                        @if (EsPendientes)
+                        {
+                            <MudText>@promocion.NombreTienda</MudText>
+                        }
+                        else
+                        {
+                            <MudText>@promocion.Titulo</MudText>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="Acciones">
+                        @if (EsPendientes)
+                        {
+                            <MudTooltip Text="Revisar solicitud">
+                                <MudIconButton Href="@($"/administracion/promociones/tiendas/{promocion.IdTienda}/{promocion.Id}/revision")"
+                                               Icon="@Icons.Material.Filled.FindInPage"
+                                               Color="Color.Primary"
+                                               aria-label="Revisar solicitud" />
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudTooltip Text="Ver detalles">
+                                <MudIconButton Href="@($"/tiendas/{promocion.IdTienda}/promociones/{promocion.Id}/detalles")"
+                                               Icon="@Icons.Material.Filled.FindInPage"
+                                               Color="Color.Primary"
+                                               aria-label="Ver detalles" />
+                            </MudTooltip>
+
+                            <MudTooltip Text="Dar de baja">
+                                <MudIconButton OnClick="() => Cancelar(promocion)"
+                                               Icon="@Icons.Material.Filled.Close"
+                                               Color="Color.Error"
+                                               Disabled="_procesando"
+                                               aria-label="Dar de baja" />
+                            </MudTooltip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    <MudText>No hay promociones para mostrar.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/administracion/promociones">Volver a tiendas</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private List<PromocionAdministradorResponse> _promociones = new List<PromocionAdministradorResponse>();
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+
+    private bool EsPendientes => Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.TrimEnd('/') == "/administracion/promociones/pendientes";
+
+    private string Titulo => EsPendientes ? "Promociones pendientes" : "Promociones de la tienda";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPromociones();
+    }
+
+    private async Task CargarPromociones()
+    {
+        _cargando = true;
+        _error = null;
+        _promociones.Clear();
+
+        try
+        {
+            if (EsPendientes)
+            {
+                _promociones = await PromocionService.ObtenerPendientes();
+            }
+            else
+            {
+                _promociones = await PromocionService.ObtenerAprobadas(IdTienda);
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Cancelar(PromocionAdministradorResponse promocion)
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync(
+                "Dar de baja la promoción",
+                $"¿Querés dar de baja «{promocion.Titulo}»?",
+                yesText: "Dar de baja",
+                cancelText: "Volver");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            await PromocionService.CancelarComoAdministrador(promocion.IdTienda, promocion.Id);
+            await CargarPromociones();
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para gestionar promociones.";
+        }
+        else if (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            _error = "La promoción no existe.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la solicitud.";
+        }
+    }
+}

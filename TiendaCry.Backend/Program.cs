@@ -1,3 +1,4 @@
+using Microsoft.Extensions.FileProviders;
 using Serilog;
 using TiendaCry.Backend.Manejadores;
 using TiendaCry.Backend.Implementacion;
@@ -41,6 +42,10 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<IEmpleadoRepository, EmpleadoRepositoryPsqlEF>();
             builder.Services.AddScoped<EmpleadoService>();
             builder.Services.AddScoped<TiendaService>();
+            builder.Services.AddScoped<IPromocionRepository, PromocionRepositoryPsqlEF>();
+            builder.Services.AddScoped<IImagenRepository, ImagenRepositoryPsqlEF>();
+            builder.Services.AddScoped<PromocionService>();
+            builder.Services.AddScoped<ImagenService>();
             builder.Services.AddScoped<IProvinciaRepository, ProvinciaRepositoryPsqlEF>();
             builder.Services.AddScoped<ProvinciaService>();
             builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
@@ -188,6 +193,19 @@ namespace TiendaCry.Backend
             app.UseHttpsRedirection();
 
             app.UseCors("Web");
+
+            string webRoot = app.Environment.WebRootPath
+                ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+
+            string carpetaImagenes = Path.Combine(webRoot, "uploads", "promociones");
+
+            Directory.CreateDirectory(carpetaImagenes);
+
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(carpetaImagenes),
+                RequestPath = "/uploads/promociones"
+            });
 
             app.UseAuthentication();
             app.UseAuthorization();

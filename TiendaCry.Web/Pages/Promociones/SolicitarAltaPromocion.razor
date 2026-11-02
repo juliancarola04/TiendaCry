@@ -1,0 +1,256 @@
+@page "/tiendas/{IdTienda:int}/promociones/agregar"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Imagen.Response
+@using TiendaCry.Shared.DTO.Promocion.Request
+@using TiendaCry.Shared.DTO.Promocion.Response
+@using TiendaCry.Shared.ViewModels.Promocion
+@using TiendaCry.Web.Services
+@inject PromocionService PromocionService
+@inject NavigationManager Navigation
+
+<PageTitle>Agregar promoción</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1">Agregar promoción</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_imagen is not null)
+        {
+            <MudAlert Severity="Severity.Success">
+                La solicitud fue enviada y quedó pendiente de revisión.
+            </MudAlert>
+
+            <MudImage Src="@_imagen.Url"
+                      Alt="@_modelo.Titulo"
+                      Width="300"
+                      ObjectFit="ObjectFit.Contain" />
+        }
+        else
+        {
+            @if (_idPromocion is not null)
+            {
+                <MudAlert Severity="Severity.Info">
+                    La promoción ya fue creada. Falta completar la carga de su imagen.
+                </MudAlert>
+            }
+
+            <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando">
+                <MudStack Spacing="4">
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.Titulo"
+                                  Label="Título"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="_idPromocion is not null"
+                                  Required="true"
+                                  RequiredError="Ingresá el título." />
+
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.Descripcion"
+                                  Label="Descripción"
+                                  Lines="6"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="_idPromocion is not null"
+                                  Required="true"
+                                  RequiredError="Ingresá la descripción." />
+
+                    <MudText>Imagen</MudText>
+
+                    <InputFile OnChange="SeleccionarImagen"
+                               accept=".jpg,.jpeg,.png"
+                               disabled="@_procesando" />
+
+                    @if (_archivo is not null)
+                    {
+                        <MudText Typo="Typo.body2">@_archivo.Name</MudText>
+                    }
+
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudDatePicker Label="Fecha de inicio"
+                                           @bind-Date="_modelo.FechaInicio"
+                                           Variant="Variant.Outlined"
+                                           Disabled="_idPromocion is not null"
+                                           Required="true"
+                                           RequiredError="Seleccioná la fecha de inicio." />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudDatePicker Label="Fecha de fin"
+                                           @bind-Date="_modelo.FechaFin"
+                                           Variant="Variant.Outlined"
+                                           Disabled="_idPromocion is not null"
+                                           Required="true"
+                                           RequiredError="Seleccioná la fecha de fin." />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_procesando"
+                               OnClick="Enviar">
+                        @if (_procesando)
+                        {
+                            <span>Enviando...</span>
+                        }
+                        else if (_idPromocion is not null)
+                        {
+                            <span>Reintentar carga de imagen</span>
+                        }
+                        else
+                        {
+                            <span>Enviar solicitud</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        }
+
+        <MudButton Href="@($"/tiendas/{IdTienda}/promociones")" Disabled="_procesando">Volver a promociones</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    private SolicitarAltaPromocionViewModel _modelo = new SolicitarAltaPromocionViewModel();
+    private MudForm _formulario = null!;
+    private IBrowserFile? _archivo;
+    private ImagenResponse? _imagen;
+    private int? _idPromocion;
+    private int? _idTiendaActual;
+    private bool _procesando;
+    private string? _error;
+
+    protected override void OnParametersSet()
+    {
+        if (_idTiendaActual == IdTienda)
+        {
+            return;
+        }
+
+        _idTiendaActual = IdTienda;
+        _modelo = new SolicitarAltaPromocionViewModel();
+        _archivo = null;
+        _imagen = null;
+        _idPromocion = null;
+        _error = null;
+    }
+
+    private void SeleccionarImagen(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        _archivo = e.File;
+
+        if (_archivo.Size > 5 * 1024 * 1024)
+        {
+            _archivo = null;
+            _error = "La imagen no puede superar los 5 MB.";
+            return;
+        }
+
+        string extension = Path.GetExtension(_archivo.Name).ToLowerInvariant();
+
+        bool esPng = extension == ".png"
+            && string.Equals(_archivo.ContentType, "image/png", StringComparison.OrdinalIgnoreCase);
+
+        bool esJpeg = (extension == ".jpg" || extension == ".jpeg")
+            && string.Equals(_archivo.ContentType, "image/jpeg", StringComparison.OrdinalIgnoreCase);
+
+        if (!esPng && !esJpeg)
+        {
+            _archivo = null;
+            _error = "Solo se permiten imágenes JPG, JPEG o PNG.";
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando || _imagen is not null)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            if (_archivo is null)
+            {
+                _error = "Seleccioná una imagen.";
+                return;
+            }
+
+            if (_modelo.FechaInicio is null || _modelo.FechaFin is null)
+            {
+                _error = "Seleccioná las fechas de inicio y fin.";
+                return;
+            }
+
+            if (_modelo.FechaFin.Value.Date < _modelo.FechaInicio.Value.Date)
+            {
+                _error = "La fecha de fin no puede ser anterior a la fecha de inicio.";
+                return;
+            }
+
+            if (_idPromocion is null)
+            {
+                DateTimeOffset inicio = new DateTimeOffset(_modelo.FechaInicio.Value.Date);
+                DateTimeOffset fin = new DateTimeOffset(_modelo.FechaFin.Value.Date.AddDays(1).AddTicks(-1));
+
+                SolicitarAltaPromocionRequest request = new SolicitarAltaPromocionRequest(IdTienda, _modelo.Titulo, _modelo.Descripcion, inicio, fin);
+
+                PromocionCreadaResponse promocion = await PromocionService.SolicitarAlta(request);
+                _idPromocion = promocion.Id;
+            }
+
+            _imagen = await PromocionService.SubirImagen(_idPromocion.Value, _archivo);
+            _archivo = null;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para gestionar promociones de esta tienda.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo completar la solicitud.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (IOException)
+        {
+            _error = "No se pudo leer la imagen. Volvé a seleccionarla.";
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

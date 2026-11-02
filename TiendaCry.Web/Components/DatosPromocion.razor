@@ -1,0 +1,56 @@
+﻿@using TiendaCry.Shared.DTO.Promocion.Response
+
+<MudPaper Class="pa-4" Outlined="true">
+    <MudStack Spacing="4">
+        @if (!string.IsNullOrWhiteSpace(Detalle.UrlImagen))
+        {
+            <MudStack AlignItems="AlignItems.Center">
+                <MudImage Src="@Detalle.UrlImagen"
+                          Alt="@Detalle.Titulo"
+                          Width="260"
+                          Height="180"
+                          ObjectFit="ObjectFit.Contain" />
+            </MudStack>
+        }
+        else
+        {
+            <MudText Align="Align.Center">Sin imagen</MudText>
+        }
+
+        <MudTextField T="string"
+                      Value="@Detalle.Titulo"
+                      Label="Título"
+                      Variant="Variant.Outlined"
+                      ReadOnly="true" />
+
+        <MudTextField T="string"
+                      Value="@Detalle.Descripcion"
+                      Label="Descripción"
+                      Variant="Variant.Outlined"
+                      Lines="6"
+                      Sizing="InputSizing.Auto"
+                      ReadOnly="true" />
+
+        <MudGrid>
+            <MudItem xs="6">
+                <MudTextField T="string"
+                              Value="@(Detalle.FechaInicio.ToLocalTime().ToString("dd/MM/yyyy"))"
+                              Label="Fecha de inicio"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string"
+                              Value="@(Detalle.FechaFin.ToLocalTime().ToString("dd/MM/yyyy"))"
+                              Label="Fecha de fin"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true" />
+            </MudItem>
+        </MudGrid>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public DetallePromocionResponse Detalle { get; set; } = null!;
+}
