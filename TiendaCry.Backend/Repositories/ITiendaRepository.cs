@@ -7,6 +7,8 @@ namespace TiendaCry.Backend.Repositories
         Task<List<Tienda>> ObtenerSolicitudesPorUsuario(int idUsuario);
         Task<List<Tienda>> ObtenerSolicitudesPendientes();
         Task<List<Tienda>> ObtenerTiendasAprobadas();
+        Task<List<Tienda>> ObtenerTiendasEmpleado(int idUsuario);
+        Task<bool> PuedeTrabajar(int idTienda, int idUsuario);
         Task<Tienda?> BuscarTiendaAprobada(int idTienda);
         Task<Tienda?> BuscarTiendaAprobadaParaBaja(int idTienda);
         Task<int?> ObtenerIdEstadoUsuarioTienda(string nombre);

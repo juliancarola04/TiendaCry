@@ -1,0 +1,105 @@
+﻿@page "/empleado/tiendas"
+@attribute [Authorize(Roles = RolesUsuario.EmpleadoTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Tienda.Response
+@inject EmpleadoTiendaService EmpleadoTiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Seleccionar tienda</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+            Seleccioná una de las tiendas
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarTiendas">Reintentar</MudButton>
+        }
+        else if (_tiendas.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No tenés vinculaciones activas con tiendas aprobadas.
+            </MudAlert>
+        }
+        else
+        {
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudStack Spacing="3">
+                    @foreach (TiendaActivaResponse tienda in _tiendas)
+                    {
+                        <MudButton Href="@($"/empleado/tiendas/{tienda.Id}/promociones")"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true">
+                            @tienda.Nombre
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+
+        <MudButton Href="/">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<TiendaActivaResponse> _tiendas = new List<TiendaActivaResponse>();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTiendas();
+    }
+
+    private async Task CargarTiendas()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _tiendas = await EmpleadoTiendaService.ObtenerTiendas();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para acceder como empleado.";
+            }
+            else if (e.StatusCode == HttpStatusCode.NotFound)
+            {
+                _error = "La tienda no existe o ya no está aprobada.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron obtener las tiendas.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

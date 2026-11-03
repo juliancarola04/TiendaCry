@@ -14,6 +14,21 @@ public class PromocionRepositoryPsqlEF : IPromocionRepository
         _dataContext = dataContext;
     }
 
+    public async Task<List<Promocion>> ObtenerVigentes(int idTienda, DateTime ahora)
+    {
+        return await _dataContext.Promociones
+            .AsNoTracking()
+            .Include(p => p.Imagen)
+            .Where(p => p.IdTienda == idTienda
+                && p.Tienda.EstadoTienda.Nombre == "Aprobada"
+                && p.EstadoPromocion.Nombre == "Aprobada"
+                && p.FechaInicio <= ahora
+                && p.FechaFin > ahora)
+            .OrderBy(p => p.Titulo)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+    }
+
     public async Task<List<Promocion>> ObtenerAprobadas(int idTienda, DateTime ahora)
     {
         return await _dataContext.Promociones

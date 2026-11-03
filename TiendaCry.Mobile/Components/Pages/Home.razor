@@ -2,6 +2,21 @@
 @attribute [Authorize]
 @layout MainLayout
 
-<h1>Hello, world!</h1>
+<PageTitle>Inicio</PageTitle>
 
-Welcome to your new app.
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Inicio</MudText>
+
+        <AuthorizeView Roles="@RolesUsuario.EmpleadoTienda">
+            <Authorized>
+                <MudButton Href="/empleado/tiendas"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true">
+                    Acceder como empleado
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudStack>
+</MudContainer>

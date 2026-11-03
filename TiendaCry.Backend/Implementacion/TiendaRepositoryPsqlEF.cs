@@ -108,6 +108,37 @@ namespace TiendaCry.Backend.Implementacion
                 .FirstOrDefaultAsync();
         }
 
+        private IQueryable<UsuarioTienda> VinculacionesEmpleado(int idUsuario)
+        {
+            return _dataContext.UsuariosTienda
+                .Where(ut => ut.IdUsuario == idUsuario
+                    && ut.EstadoUsuarioTienda.Nombre == "Activo"
+                    && ut.FechaBaja == null
+                    && ut.Tienda.EstadoTienda.Nombre == "Aprobada"
+                    && ut.Usuario.EstadoUsuario.Nombre == "Activo"
+                    && ut.Usuario.EmailVerificado
+                    && !ut.Usuario.DebeCambiarContrasena
+                    && (ut.RolTienda.Nombre == "Empleado"
+                        || ut.RolTienda.Nombre == "Administrador"));
+        }
+
+        public async Task<List<Tienda>> ObtenerTiendasEmpleado(int idUsuario)
+        {
+            return await VinculacionesEmpleado(idUsuario)
+                .Select(ut => ut.Tienda)
+                .Distinct()
+                .OrderBy(t => t.Nombre)
+                .ThenBy(t => t.Id)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<bool> PuedeTrabajar(int idTienda, int idUsuario)
+        {
+            return await VinculacionesEmpleado(idUsuario)
+                .AnyAsync(ut => ut.IdTienda == idTienda);
+        }
+
         public async Task<bool> PuedeAdministrar(int idTienda, int idUsuario)
         {
             return await _dataContext.UsuariosTienda

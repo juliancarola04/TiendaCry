@@ -22,6 +22,30 @@ public class PromocionService
         _logger = logger;
     }
 
+    public async Task<PromocionesTiendaEmpleadoResponse?> ObtenerParaEmpleado(int idTienda, int idUsuario, string baseUrl)
+    {
+        if (!await _tiendaRepository.PuedeTrabajar(idTienda, idUsuario))
+        {
+            throw new SinPermisoException("No tenés permiso para trabajar en esta tienda.");
+        }
+
+        Tienda? tienda = await _tiendaRepository.BuscarTiendaAprobada(idTienda);
+
+        if (tienda is null)
+        {
+            return null;
+        }
+
+        List<Promocion> promociones = await _promocionRepository.ObtenerVigentes(idTienda, DateTime.UtcNow);
+
+        List<PromocionEmpleadoResponse> response = promociones.Select(p => new PromocionEmpleadoResponse(
+            p.Id,
+            p.Titulo,
+            p.Imagen is null ? null : $"{baseUrl.TrimEnd('/')}/{p.Imagen.RutaRelativa}")).ToList();
+
+        return new PromocionesTiendaEmpleadoResponse(tienda.Id, tienda.Nombre, response);
+    }
+
     public async Task<List<PromocionAdministradorResponse>> ObtenerAprobadas(int idTienda, int idUsuario, string baseUrl)
     {
         await ValidarAdministradorTiendaCry(idUsuario);

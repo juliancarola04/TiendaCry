@@ -20,6 +20,13 @@ namespace TiendaCry.Backend.Services
             _usuarioRepository = usuarioRepository;
         }
 
+        public async Task<List<TiendaActivaResponse>> ObtenerTiendasEmpleado(int idUsuario)
+        {
+            List<Tienda> tiendas = await _tiendaRepository.ObtenerTiendasEmpleado(idUsuario);
+
+            return tiendas.Select(t => new TiendaActivaResponse(t.Id, t.Nombre)).ToList();
+        }
+
         public async Task<TiendaActivaResponse?> ObtenerTiendaActiva(int idUsuario)
         {
             Usuario? usuario = await _usuarioRepository.BuscarPorId(idUsuario);
