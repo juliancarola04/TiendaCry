@@ -4,6 +4,10 @@ namespace TiendaCry.Backend.Repositories
 {
     public interface IUsuarioRepository
     {
+        Task<List<Usuario>> ObtenerUsuariosActivos();
+        Task<Usuario?> BuscarUsuarioActivoParaBaja(int idUsuario);
+        Task<int?> ObtenerIdEstadoBaja();
+        Task GuardarCambios();
         Task<bool> ExistePorUsername(string username);
         Task<bool> ExistePorEmail(string email);
         Task<Usuario?> BuscarPorUsername(string username);

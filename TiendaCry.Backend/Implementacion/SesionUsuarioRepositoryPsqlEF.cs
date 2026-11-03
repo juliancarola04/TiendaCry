@@ -14,6 +14,13 @@ namespace TiendaCry.Backend.Implementacion
             _dataContext = dataContext;
         }
 
+        public async Task<List<SesionUsuario>> ObtenerSesionesSinRevocar(int idUsuario)
+        {
+            return await _dataContext.SesionesUsuario
+                .Where(s => s.IdUsuario == idUsuario && s.FechaRevocacion == null)
+                .ToListAsync();
+        }
+
         public async Task Crear(SesionUsuario sesion)
         {
             _dataContext.SesionesUsuario.Add(sesion);

@@ -1,0 +1,138 @@
+﻿@page "/administracion/usuarios/agregar"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Usuario.Request
+@using TiendaCry.Shared.ViewModels.Usuario
+@using TiendaCry.Web.Services
+@inject UsuarioService UsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>Añadir usuario</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Añadir usuario</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Crear">
+            <MudStack Spacing="4">
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Usuario"
+                              Label="Usuario"
+                              Variant="Variant.Outlined"
+                              MaxLength="30"
+                              Required="true"
+                              RequiredError="Ingresá un usuario." />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Email"
+                              Label="E-mail"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              MaxLength="254"
+                              Required="true"
+                              RequiredError="Ingresá un correo." />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.ContrasenaTemporal"
+                              Label="Contraseña temporal"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá una contraseña temporal." />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Nombre"
+                              Label="Nombre"
+                              Variant="Variant.Outlined"
+                              MaxLength="35"
+                              Required="true"
+                              RequiredError="Ingresá el nombre." />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Apellido"
+                              Label="Apellido"
+                              Variant="Variant.Outlined"
+                              MaxLength="35"
+                              Required="true"
+                              RequiredError="Ingresá el apellido." />
+
+                <MudButton OnClick="Crear"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="_procesando">
+                    @(_procesando ? "Creando..." : "Crear")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+
+        <MudButton Href="/administracion/usuarios" Disabled="_procesando">Volver al listado</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private readonly CrearUsuarioViewModel _modelo = new CrearUsuarioViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private string? _error;
+
+    private async Task Crear()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            CrearUsuarioRequest request = new CrearUsuarioRequest(_modelo.Usuario, _modelo.Email, _modelo.ContrasenaTemporal, _modelo.Nombre, _modelo.Apellido);
+
+            await UsuarioService.CrearUsuario(request);
+
+            Navigation.NavigateTo("/administracion/usuarios");
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para crear usuarios.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo crear el usuario.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

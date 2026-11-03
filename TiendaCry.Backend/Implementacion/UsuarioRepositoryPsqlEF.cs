@@ -15,6 +15,52 @@ namespace TiendaCry.Backend.Implementacion
             _dataContext = dataContext;
         }
 
+        public async Task<Usuario?> BuscarUsuarioActivoParaBaja(int idUsuario)
+        {
+            return await _dataContext.Usuarios
+                .Include(u => u.UsuariosTienda)
+                    .ThenInclude(ut => ut.RolTienda)
+                .Include(u => u.UsuariosTienda)
+                    .ThenInclude(ut => ut.EstadoUsuarioTienda)
+                .Include(u => u.UsuariosTienda)
+                    .ThenInclude(ut => ut.Tienda)
+                        .ThenInclude(t => t.UsuariosTienda)
+                            .ThenInclude(ut => ut.EstadoUsuarioTienda)
+                .Include(u => u.UsuariosTienda)
+                    .ThenInclude(ut => ut.Tienda)
+                        .ThenInclude(t => t.Promociones)
+                            .ThenInclude(p => p.EstadoPromocion)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(u => u.Id == idUsuario
+                    && u.EstadoUsuario.Nombre == "Activo"
+                    && !u.EsAdministradorTiendaCry);
+        }
+
+        public async Task<int?> ObtenerIdEstadoBaja()
+        {
+            return await _dataContext.EstadosUsuario
+                .Where(e => e.Nombre == "Baja")
+                .Select(e => (int?)e.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task GuardarCambios()
+        {
+            await _dataContext.SaveChangesAsync();
+        }
+
+        public async Task<List<Usuario>> ObtenerUsuariosActivos()
+        {
+            return await _dataContext.Usuarios
+                .AsNoTracking()
+                .Where(u => u.EstadoUsuario.Nombre == "Activo"
+                    && !u.EsAdministradorTiendaCry)
+                .OrderBy(u => u.Apellido)
+                .ThenBy(u => u.Nombre)
+                .ThenBy(u => u.Id)
+                .ToListAsync();
+        }
+
         public async Task<List<string>> ObtenerRoles(int idUsuario)
         {
             List<string> roles = new List<string>();
