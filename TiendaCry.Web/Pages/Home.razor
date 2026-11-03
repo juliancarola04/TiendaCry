@@ -5,6 +5,8 @@
 @using TiendaCry.Shared.DTO.Tienda.Response
 @using TiendaCry.Web.Services
 @inject TiendaService TiendaService
+@inject AutenticacionService AutenticacionService
+@inject IDialogService DialogService
 @inject AuthenticationStateProvider EstadoAutenticacion
 @inject NavigationManager Navigation
 
@@ -107,9 +109,11 @@
                                     Gestionar empleados
                                 </MudButton>
 
-                                <MudButton Variant="Variant.Outlined"
+                                <MudButton OnClick="CancelarRelaciones"
+                                           Variant="Variant.Outlined"
                                            Color="Color.Error"
-                                           FullWidth="true">
+                                           FullWidth="true"
+                                           Disabled="_procesando">
                                     Cancelar relaciones con TiendaCry
                                 </MudButton>
                             </MudStack>
@@ -123,6 +127,8 @@
 
 @code {
     private bool _cargando = true;
+    private bool _procesando;
+    private bool _actualizarSesion;
     private bool _esAdministradorTiendaCry;
     private TiendaActivaResponse? _tiendaActiva;
     private string? _error;
@@ -130,6 +136,69 @@
     protected override async Task OnInitializedAsync()
     {
         await CargarInicio();
+    }
+
+    private async Task CancelarRelaciones()
+    {
+        if (_procesando || _tiendaActiva is null)
+        {
+            return;
+        }
+
+        _procesando = true;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync(
+                "Cancelar relaciones con TiendaCry",
+                $"¿Querés dar de baja «{_tiendaActiva.Nombre}»? Se darán de baja sus vinculaciones con administradores y empleados, y se cancelarán sus promociones pendientes y aprobadas. Las cuentas de los usuarios se conservarán.",
+                yesText: "Cancelar relaciones",
+                cancelText: "Volver");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            _error = null;
+
+            await TiendaService.CancelarRelaciones(_tiendaActiva.Id);
+
+            _actualizarSesion = true;
+
+            await CargarInicio();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para cancelar las relaciones de esta tienda.";
+            }
+            else if (e.StatusCode == HttpStatusCode.NotFound)
+            {
+                _error = "La tienda no existe o ya no está aprobada.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron cancelar las relaciones con TiendaCry.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
     }
 
     private async Task CargarInicio()
@@ -141,6 +210,13 @@
 
         try
         {
+            if (_actualizarSesion)
+            {
+                await AutenticacionService.RenovarSesion();
+
+                _actualizarSesion = false;
+            }
+
             AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
 
             if (estado.User.Identity?.IsAuthenticated != true)
@@ -165,6 +241,12 @@
         }
         catch (HttpRequestException e)
         {
+            if (_actualizarSesion && e.StatusCode != HttpStatusCode.Unauthorized)
+            {
+                _error = "La tienda fue dada de baja, pero no se pudo actualizar la sesión. Intentá nuevamente.";
+                return;
+            }
+
             if (e.StatusCode == HttpStatusCode.Unauthorized)
             {
                 Navigation.NavigateTo("/login", replace: true);
@@ -184,7 +266,14 @@
         }
         catch (InvalidOperationException e)
         {
-            _error = e.Message;
+            if (_actualizarSesion)
+            {
+                _error = "La tienda fue dada de baja, pero no se pudo actualizar la sesión. Intentá nuevamente.";
+            }
+            else
+            {
+                _error = e.Message;
+            }
         }
         finally
         {

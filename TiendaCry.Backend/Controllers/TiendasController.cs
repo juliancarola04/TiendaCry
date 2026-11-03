@@ -20,6 +20,30 @@ namespace TiendaCry.Backend.Controllers
             _tiendaService = tiendaService;
         }
 
+        [HttpPut("{idTienda:int}/cancelar-relaciones")]
+        [Authorize(Roles = RolesUsuario.AdministradorTienda)]
+        public async Task<IActionResult> CancelarRelaciones(int idTienda)
+        {
+            try
+            {
+                string? sub = User.FindFirst("sub")?.Value;
+                int idUsuario = Convert.ToInt32(sub);
+
+                bool canceladas = await _tiendaService.CancelarRelaciones(idTienda, idUsuario);
+
+                if (!canceladas)
+                {
+                    return NotFound("La tienda no existe o ya no está aprobada.");
+                }
+
+                return NoContent();
+            }
+            catch (SinPermisoException e)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+            }
+        }
+
         [HttpPut("{idTienda:int}/baja")]
         [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
         public async Task<IActionResult> DarDeBaja(int idTienda)

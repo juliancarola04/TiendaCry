@@ -373,6 +373,21 @@ namespace TiendaCry.Backend.Services
         {
             await ValidarAdministrador(idUsuario);
 
+            return await AplicarBaja(idTienda, idUsuario);
+        }
+
+        public async Task<bool> CancelarRelaciones(int idTienda, int idUsuario)
+        {
+            if (!await _tiendaRepository.PuedeAdministrar(idTienda, idUsuario))
+            {
+                throw new SinPermisoException("No tenés permiso para cancelar las relaciones de esta tienda.");
+            }
+
+            return await AplicarBaja(idTienda, idUsuario);
+        }
+
+        private async Task<bool> AplicarBaja(int idTienda, int idUsuario)
+        {
             Tienda? tienda = await _tiendaRepository.BuscarTiendaAprobadaParaBaja(idTienda);
 
             if (tienda is null)

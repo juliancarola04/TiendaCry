@@ -115,6 +115,13 @@ public class TiendaService
         await ValidarRespuesta(respuesta, "No se pudo rechazar la solicitud.");
     }
 
+    public async Task CancelarRelaciones(int idTienda)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/tiendas/{idTienda}/cancelar-relaciones"));
+
+        await ValidarRespuesta(respuesta, "No se pudieron cancelar las relaciones con TiendaCry.");
+    }
+
     public async Task DarDeBaja(int idTienda)
     {
         using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/tiendas/{idTienda}/baja"));
