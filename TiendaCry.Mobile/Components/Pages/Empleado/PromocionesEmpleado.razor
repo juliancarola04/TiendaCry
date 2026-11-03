@@ -36,20 +36,24 @@
             {
                 @foreach (PromocionEmpleadoResponse promocion in _tienda.Promociones)
                 {
-                    <MudPaper Class="pa-2" Outlined="true">
-                        @if (!string.IsNullOrWhiteSpace(promocion.UrlImagen))
-                        {
-                            <MudImage Src="@promocion.UrlImagen"
-                                      Alt="@promocion.Titulo"
-                                      Fluid="true"
-                                      ObjectFit="ObjectFit.Contain" />
-                        }
-                        else
-                        {
-                            <MudText>@promocion.Titulo</MudText>
-                            <MudText>Sin imagen</MudText>
-                        }
-                    </MudPaper>
+                    <MudLink Href="@($"/empleado/tiendas/{IdTienda}/promociones/{promocion.Id}")"
+                             Underline="Underline.None"
+                             aria-label="@($"Seleccionar {promocion.Titulo}")">
+                        <MudPaper Class="pa-2" Outlined="true">
+                            @if (!string.IsNullOrWhiteSpace(promocion.UrlImagen))
+                            {
+                                <MudImage Src="@promocion.UrlImagen"
+                                          Alt="@promocion.Titulo"
+                                          Fluid="true"
+                                          ObjectFit="ObjectFit.Contain" />
+                            }
+                            else
+                            {
+                                <MudText>@promocion.Titulo</MudText>
+                                <MudText>Sin imagen</MudText>
+                            }
+                        </MudPaper>
+                    </MudLink>
                 }
             }
         }

@@ -23,6 +23,16 @@ public class EmpleadoTiendaService
             ?? throw new InvalidOperationException("No se pudieron obtener las tiendas.");
     }
 
+    public async Task<PromocionEmpleadoResponse> ObtenerPromocion(int idTienda, int idPromocion)
+    {
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, $"api/empleado/tiendas/{idTienda}/promociones/{idPromocion}"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await respuesta.Content.ReadFromJsonAsync<PromocionEmpleadoResponse>()
+            ?? throw new InvalidOperationException("No se pudo obtener la promoción.");
+    }
+
     public async Task<PromocionesTiendaEmpleadoResponse> ObtenerPromociones(int idTienda)
     {
         using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, $"api/empleado/tiendas/{idTienda}/promociones"));

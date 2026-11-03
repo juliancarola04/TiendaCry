@@ -1,0 +1,116 @@
+﻿@page "/empleado/tiendas/{IdTienda:int}/promociones/{IdPromocion:int}"
+@attribute [Authorize(Roles = RolesUsuario.EmpleadoTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Promocion.Response
+@inject EmpleadoTiendaService EmpleadoTiendaService
+@inject NavigationManager Navigation
+
+<PageTitle>Promoción seleccionada</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="6">
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+
+            <MudButton OnClick="CargarPromocion" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else if (_promocion is not null)
+        {
+            @if (!string.IsNullOrWhiteSpace(_promocion.UrlImagen))
+            {
+                <MudImage Src="@_promocion.UrlImagen"
+                          Alt="@_promocion.Titulo"
+                          Fluid="true"
+                          ObjectFit="ObjectFit.Contain" />
+            }
+            else
+            {
+                <MudText Align="Align.Center">@_promocion.Titulo</MudText>
+                <MudText Align="Align.Center">Sin imagen</MudText>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="true">
+                Escanear código QR
+            </MudButton>
+        }
+
+        <MudButton Href="@($"/empleado/tiendas/{IdTienda}/promociones")"
+                   Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   FullWidth="true">
+            Volver atrás
+        </MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int IdTienda { get; set; }
+
+    [Parameter]
+    public int IdPromocion { get; set; }
+
+    private PromocionEmpleadoResponse? _promocion;
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPromocion();
+    }
+
+    private async Task CargarPromocion()
+    {
+        _cargando = true;
+        _error = null;
+        _promocion = null;
+
+        try
+        {
+            _promocion = await EmpleadoTiendaService.ObtenerPromocion(IdTienda, IdPromocion);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "Ya no tenés permiso para trabajar en esta tienda.";
+            }
+            else if (e.StatusCode == HttpStatusCode.NotFound)
+            {
+                _error = "La promoción no existe o ya no está vigente.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo obtener la promoción.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

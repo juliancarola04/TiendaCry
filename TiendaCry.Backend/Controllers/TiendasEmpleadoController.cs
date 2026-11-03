@@ -32,6 +32,29 @@ public class TiendasEmpleadoController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{idTienda:int}/promociones/{idPromocion:int}")]
+    public async Task<ActionResult<PromocionEmpleadoResponse>> ObtenerPromocion(int idTienda, int idPromocion)
+    {
+        try
+        {
+            int idUsuario = Convert.ToInt32(User.FindFirst("sub")?.Value);
+            string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+
+            PromocionEmpleadoResponse? response = await _promocionService.ObtenerSeleccionadaParaEmpleado(idTienda, idPromocion, idUsuario, baseUrl);
+
+            if (response is null)
+            {
+                return NotFound("La promoción no existe o ya no está vigente.");
+            }
+
+            return Ok(response);
+        }
+        catch (SinPermisoException e)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, e.Message);
+        }
+    }
+
     [HttpGet("{idTienda:int}/promociones")]
     public async Task<ActionResult<PromocionesTiendaEmpleadoResponse>> ObtenerPromociones(int idTienda)
     {

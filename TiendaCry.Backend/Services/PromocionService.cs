@@ -22,6 +22,30 @@ public class PromocionService
         _logger = logger;
     }
 
+    public async Task<PromocionEmpleadoResponse?> ObtenerSeleccionadaParaEmpleado(int idTienda, int idPromocion, int idUsuario, string baseUrl)
+    {
+        if (!await _tiendaRepository.PuedeTrabajar(idTienda, idUsuario))
+        {
+            throw new SinPermisoException("No tenés permiso para trabajar en esta tienda.");
+        }
+
+        Promocion? promocion = await _promocionRepository.BuscarVigente(idTienda, idPromocion, DateTime.UtcNow);
+
+        if (promocion is null)
+        {
+            return null;
+        }
+
+        string? urlImagen = null;
+
+        if (promocion.Imagen is not null)
+        {
+            urlImagen = $"{baseUrl.TrimEnd('/')}/{promocion.Imagen.RutaRelativa}";
+        }
+
+        return new PromocionEmpleadoResponse(promocion.Id, promocion.Titulo, urlImagen);
+    }
+
     public async Task<PromocionesTiendaEmpleadoResponse?> ObtenerParaEmpleado(int idTienda, int idUsuario, string baseUrl)
     {
         if (!await _tiendaRepository.PuedeTrabajar(idTienda, idUsuario))
