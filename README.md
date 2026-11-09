@@ -164,3 +164,63 @@ La excepción de certificado configurada en Debug se aplica a `HttpClient`. La c
 - Los archivos de imágenes se almacenan en `TiendaCry.Backend/wwwroot/uploads/promociones`; la tabla `Imagenes` guarda sus metadatos y su relación con la promoción.
 - Los logs se escriben diariamente en `Logs/log-.txt`, relativo al directorio de ejecución del backend.
 - Las imágenes subidas y los logs están excluidos del control de versiones. Al desplegar, se debe conservar el almacenamiento de imágenes para que las rutas guardadas sigan funcionando.
+
+## Capturas de pruebas
+
+Capturas de la aplicación tomadas durante las pruebas. Algunas corresponden a versiones anteriores de la interfaz. La pantalla de la promoción seleccionada por el empleado muestra el acceso al escaneo, cuya funcionalidad sigue pendiente.
+
+### Página web
+
+#### Panel del administrador de TiendaCry
+
+![Panel del administrador de TiendaCry](PruebasImagenes/Web/Administrador.png)
+
+#### Gestión de tiendas
+
+![Gestión de tiendas](PruebasImagenes/Web/AdministradorTiendas.png)
+
+#### Detalles de una tienda
+
+![Detalles de una tienda](PruebasImagenes/Web/AdministradorDetalleTienda.png)
+
+#### Revisión de una promoción pendiente
+
+![Revisión de una promoción pendiente](PruebasImagenes/Web/AdministradorPromocionJuzgar.png)
+
+#### Panel del administrador de tienda
+
+![Panel del administrador de tienda](PruebasImagenes/Web/AdministradorTienda.png)
+
+#### Gestión de promociones de la tienda
+
+![Gestión de promociones de la tienda](PruebasImagenes/Web/AdministradorTiendaPromociones.png)
+
+#### Solicitud de alta de una promoción
+
+![Solicitud de alta de una promoción](PruebasImagenes/Web/AdministradorTiendaAddPromocion.png)
+
+### Aplicación móvil
+
+#### Selección de modo socio o empleado
+
+<img src="PruebasImagenes/Movil/HomePageSocioYEmpleado.jpeg" alt="Selección de modo socio o empleado" width="280">
+
+#### Promociones disponibles para el socio
+
+<img src="PruebasImagenes/Movil/SocioPromociones.jpeg" alt="Promociones disponibles para el socio" width="280">
+
+#### Detalle de una promoción para el socio
+
+<img src="PruebasImagenes/Movil/SocioPromocionDetalle.jpeg" alt="Detalle de una promoción para el socio" width="280">
+
+#### Perfil del socio
+
+<img src="PruebasImagenes/Movil/DetallesCuentaSocio.jpeg" alt="Perfil del socio" width="280">
+
+#### Promociones de la tienda para el empleado
+
+<img src="PruebasImagenes/Movil/EmpleadoPromociones.jpeg" alt="Promociones de la tienda para el empleado" width="280">
+
+#### Promoción seleccionada por el empleado
+
+<img src="PruebasImagenes/Movil/EmpleadoEscanearQR.jpeg" alt="Promoción seleccionada por el empleado" width="280">
