@@ -9,7 +9,7 @@
 
 <PageTitle>Promoción seleccionada</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
     <MudStack Spacing="6">
         @if (_cargando)
         {
@@ -54,6 +54,8 @@
         </MudButton>
     </MudStack>
 </MudContainer>
+
+<BarraEmpleado IdTienda="@IdTienda" />
 
 @code {
     [Parameter]

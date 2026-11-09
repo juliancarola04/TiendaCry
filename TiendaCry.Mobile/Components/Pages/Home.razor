@@ -1,22 +1,158 @@
 ﻿@page "/"
 @attribute [Authorize]
 @layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@inject NavigationManager Navigation
+@inject SocioService SocioService
+@inject AutenticacionService AutenticacionService
 
 <PageTitle>Inicio</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
-    <MudStack Spacing="4">
-        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Inicio</MudText>
+<MudContainer MaxWidth="MaxWidth.Small" Class="min-vh-100 d-flex flex-column py-6">
+    <MudStack Spacing="4" Class="flex-grow-1">
+        @if (_redirigiendo || _procesando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Inicio</MudText>
 
-        <AuthorizeView Roles="@RolesUsuario.EmpleadoTienda">
-            <Authorized>
-                <MudButton Href="/empleado/tiendas"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           FullWidth="true">
-                    Acceder como empleado
-                </MudButton>
-            </Authorized>
-        </AuthorizeView>
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <MudAlert Severity="Severity.Error">@_error</MudAlert>
+                <MudButton OnClick="ConvertirseEnSocio" Color="Color.Primary">Reintentar</MudButton>
+            }
+
+            <AuthorizeView Roles="@RolesUsuario.Socio">
+                <Authorized>
+                    <MudButton Href="/socio/promociones"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true">
+                        Acceder como socio
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="@RolesUsuario.EmpleadoTienda">
+                <Authorized Context="estadoEmpleado">
+                    @if (!estadoEmpleado.User.IsInRole(RolesUsuario.Socio) && string.IsNullOrWhiteSpace(_error))
+                    {
+                        <MudButton OnClick="ConvertirseEnSocio"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Disabled="_procesando">
+                            Convertirse en socio
+                        </MudButton>
+                    }
+
+                    <MudButton Href="/empleado/tiendas"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Disabled="_procesando">
+                        Acceder como empleado
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+
+            <div class="mt-auto pt-6">
+                <BotonCerrarSesion />
+            </div>
+        }
     </MudStack>
 </MudContainer>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState> EstadoAutenticacion { get; set; } = null!;
+
+    private bool _redirigiendo;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        AuthenticationState estado = await EstadoAutenticacion;
+
+        if (estado.User.Identity?.IsAuthenticated != true)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        bool esSocio = estado.User.IsInRole(RolesUsuario.Socio);
+        bool esEmpleado = estado.User.IsInRole(RolesUsuario.EmpleadoTienda);
+        bool esAdministrador = estado.User.IsInRole(RolesUsuario.AdministradorTiendaCry)
+            || estado.User.IsInRole(RolesUsuario.AdministradorTienda);
+
+        if (esSocio && !esEmpleado)
+        {
+            _redirigiendo = true;
+            Navigation.NavigateTo("/socio/promociones", replace: true);
+            return;
+        }
+
+        if (!esSocio && !esEmpleado && !esAdministrador)
+        {
+            await ConvertirseEnSocio();
+        }
+    }
+
+    private async Task ConvertirseEnSocio()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await SocioService.CrearSocio();
+
+            await AutenticacionService.RenovarSesion();
+
+            _redirigiendo = true;
+
+            Navigation.NavigateTo("/socio/promociones", replace: true);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No se pudo completar el alta como socio.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo completar el alta como socio. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

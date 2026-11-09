@@ -1,0 +1,120 @@
+﻿@page "/socio/promociones/{IdPromocion:int}"
+@attribute [Authorize(Roles = RolesUsuario.Socio)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Socio.Response
+@inject SocioService SocioService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalles de promoción</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="4">
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarDetalle">Reintentar</MudButton>
+        }
+        else if (_promocion is not null)
+        {
+            <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">@_promocion.Titulo</MudText>
+
+            @if (!string.IsNullOrWhiteSpace(_promocion.UrlImagen))
+            {
+                <MudImage Src="@_promocion.UrlImagen" Alt="@_promocion.Titulo" Fluid="true" ObjectFit="ObjectFit.Contain" />
+            }
+            else
+            {
+                <MudText>Sin imagen</MudText>
+            }
+
+            <MudTextField T="string" Value="@_promocion.Descripcion" Label="Descripción" ReadOnly="true" Lines="5" Variant="Variant.Outlined" />
+            <MudTextField T="string" Value="@_promocion.Provincia" Label="Provincia" ReadOnly="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Value="@_promocion.Ciudad" Label="Ciudad" ReadOnly="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Value="@($"{_promocion.Calle} {_promocion.NumCalle}")" Label="Dirección" ReadOnly="true" Variant="Variant.Outlined" />
+
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudTextField T="string" Value="@_promocion.FechaInicio.ToLocalTime().ToString("dd/MM/yyyy")" Label="Fecha de inicio" ReadOnly="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Value="@_promocion.FechaFin.ToLocalTime().ToString("dd/MM/yyyy")" Label="Fecha de fin" ReadOnly="true" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        }
+
+        <MudButton Href="@UrlVolver">Volver atrás</MudButton>
+    </MudStack>
+</MudContainer>
+
+<BarraSocio />
+
+@code {
+    [Parameter]
+    public int IdPromocion { get; set; }
+
+    [SupplyParameterFromQuery(Name = "cerca")]
+    public bool Cerca { get; set; }
+
+    private DetallePromocionSocioResponse? _promocion;
+    private bool _cargando = true;
+    private string? _error;
+
+    private string UrlVolver
+    {
+        get
+        {
+            if (Cerca)
+            {
+                return "/socio/promociones?cerca=true";
+            }
+
+            return "/socio/promociones";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarDetalle();
+    }
+
+    private async Task CargarDetalle()
+    {
+        _cargando = true;
+        _error = null;
+        _promocion = null;
+
+        try
+        {
+            _promocion = await SocioService.ObtenerDetalle(IdPromocion);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para acceder como socio.";
+            }
+            else
+            {
+                _error = "No se pudo obtener la promoción.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

@@ -1,0 +1,166 @@
+﻿@page "/administracion/administradores"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Usuario.Response
+@using TiendaCry.Web.Services
+@inject AdministradorService AdministradorService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de administradores</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" HtmlTag="h1">Gestión de administradores</MudText>
+
+            <MudTooltip Text="Añadir administrador">
+                <MudIconButton Href="/administracion/administradores/agregar"
+                               Icon="@Icons.Material.Filled.Add"
+                               Color="Color.Primary"
+                               aria-label="Añadir administrador" />
+            </MudTooltip>
+        </MudStack>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarAdministradores" Color="Color.Primary">Reintentar</MudButton>
+        }
+        else
+        {
+            <MudTable T="UsuarioListadoResponse" Items="_administradores" Hover="true">
+                <HeaderContent>
+                    <MudTh>Nombre y apellido</MudTh>
+                    <MudTh>Correo</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="usuario">
+                    <MudTd DataLabel="Nombre y apellido">@usuario.Nombre @usuario.Apellido</MudTd>
+                    <MudTd DataLabel="Correo">@usuario.Email</MudTd>
+                    <MudTd DataLabel="Acciones">
+                        <MudTooltip Text="Dar de baja al administrador">
+                            <MudIconButton OnClick="() => DarDeBaja(usuario)"
+                                           Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Error"
+                                           Disabled="_procesando"
+                                           aria-label="Dar de baja al administrador" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText>No hay administradores activos.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<UsuarioListadoResponse> _administradores = new List<UsuarioListadoResponse>();
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAdministradores();
+    }
+
+    private async Task DarDeBaja(UsuarioListadoResponse administrador)
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync(
+                "Dar de baja al administrador",
+                $"¿Querés dar de baja a «{administrador.Nombre} {administrador.Apellido}»? Se bloqueará su acceso y se revocarán sus sesiones. El historial se conservará.",
+                yesText: "Dar de baja",
+                cancelText: "Cancelar");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            await AdministradorService.DarDeBaja(administrador.Id);
+
+            _administradores.RemoveAll(a => a.Id == administrador.Id);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo dar de baja al administrador.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private async Task CargarAdministradores()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _administradores = await AdministradorService.ObtenerAdministradores();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para gestionar administradores.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron obtener los administradores.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

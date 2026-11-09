@@ -1,0 +1,301 @@
+﻿@page "/administracion/categorias"
+@attribute [Authorize(Roles = RolesUsuario.AdministradorTiendaCry)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Shared.DTO.Categoria.Request
+@using TiendaCry.Shared.DTO.Categoria.Response
+@using TiendaCry.Shared.ViewModels.Categoria
+@using TiendaCry.Web.Services
+@inject CategoriaService CategoriaService
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de categorías</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" HtmlTag="h1">Gestión de categorías</MudText>
+
+            <MudTooltip Text="Añadir categoría">
+                <MudIconButton OnClick="NuevaCategoria"
+                               Icon="@Icons.Material.Filled.Add"
+                               Color="Color.Primary"
+                               Disabled="@(_procesando || _cargando)"
+                               aria-label="Añadir categoría" />
+            </MudTooltip>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_mostrarFormulario)
+        {
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h6">
+                        @(_idCategoria.HasValue ? "Modificar categoría" : "Añadir categoría")
+                    </MudText>
+
+                    <MudForm @key="_modelo" @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Guardar">
+                        <MudStack Spacing="3">
+                            <MudTextField T="string"
+                                          @bind-Value="_modelo.Nombre"
+                                          Label="Nombre"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          RequiredError="Ingresá el nombre de la categoría." />
+
+                            <MudStack Row="true" Spacing="2">
+                                <MudButton OnClick="Guardar"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Disabled="_procesando">
+                                    Guardar
+                                </MudButton>
+
+                                <MudButton OnClick="CancelarEdicion" Disabled="_procesando">
+                                    Cancelar
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudForm>
+                </MudStack>
+            </MudPaper>
+        }
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_falloCarga)
+        {
+            <MudButton OnClick="CargarCategorias" Color="Color.Primary">
+                Reintentar
+            </MudButton>
+        }
+        else
+        {
+            <MudTable T="CategoriaResponse" Items="_categorias" Hover="true">
+                <HeaderContent>
+                    <MudTh>Nombre</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+
+                <RowTemplate Context="categoria">
+                    <MudTd DataLabel="Nombre">@categoria.Nombre</MudTd>
+
+                    <MudTd DataLabel="Acciones">
+                        <MudTooltip Text="Modificar categoría">
+                            <MudIconButton OnClick="() => Editar(categoria)"
+                                           Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           Disabled="_procesando"
+                                           aria-label="Modificar categoría" />
+                        </MudTooltip>
+
+                        <MudTooltip Text="Eliminar categoría">
+                            <MudIconButton OnClick="() => Eliminar(categoria)"
+                                           Icon="@Icons.Material.Filled.Close"
+                                           Color="Color.Error"
+                                           Disabled="_procesando"
+                                           aria-label="Eliminar categoría" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    <MudText>No hay categorías.</MudText>
+                </NoRecordsContent>
+            </MudTable>
+        }
+
+        <MudButton Href="/" Disabled="_procesando">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<CategoriaResponse> _categorias = new List<CategoriaResponse>();
+    private CategoriaViewModel _modelo = new CategoriaViewModel();
+    private MudForm _formulario = null!;
+    private int? _idCategoria;
+    private bool _mostrarFormulario;
+    private bool _cargando = true;
+    private bool _falloCarga;
+    private bool _procesando;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCategorias();
+    }
+
+    private void NuevaCategoria()
+    {
+        _idCategoria = null;
+        _modelo = new CategoriaViewModel();
+        _mostrarFormulario = true;
+        _error = null;
+    }
+
+    private void Editar(CategoriaResponse categoria)
+    {
+        _idCategoria = categoria.Id;
+        _modelo = new CategoriaViewModel
+        {
+            Nombre = categoria.Nombre
+        };
+
+        _mostrarFormulario = true;
+        _error = null;
+    }
+
+    private void CancelarEdicion()
+    {
+        _mostrarFormulario = false;
+        _idCategoria = null;
+        _modelo = new CategoriaViewModel();
+    }
+
+    private async Task CargarCategorias()
+    {
+        _cargando = true;
+        _falloCarga = false;
+        _error = null;
+
+        try
+        {
+            _categorias = await CategoriaService.ObtenerCategorias();
+        }
+        catch (HttpRequestException e)
+        {
+            _falloCarga = true;
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _falloCarga = true;
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            GuardarCategoriaRequest request = new GuardarCategoriaRequest(_modelo.Nombre);
+
+            if (_idCategoria.HasValue)
+            {
+                await CategoriaService.Modificar(_idCategoria.Value, request);
+            }
+            else
+            {
+                await CategoriaService.Crear(request);
+            }
+
+            CancelarEdicion();
+
+            await CargarCategorias();
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private async Task Eliminar(CategoriaResponse categoria)
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            bool? confirmada = await DialogService.ShowMessageBoxAsync(
+                "Eliminar categoría",
+                $"¿Querés eliminar «{categoria.Nombre}»? Solo se podrá eliminar si no tiene tiendas asociadas.",
+                yesText: "Eliminar",
+                cancelText: "Cancelar");
+
+            if (confirmada != true)
+            {
+                return;
+            }
+
+            await CategoriaService.Eliminar(categoria.Id);
+
+            _categorias.RemoveAll(c => c.Id == categoria.Id);
+
+            if (_idCategoria == categoria.Id)
+            {
+                CancelarEdicion();
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para realizar esta operación.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = "No se pudo completar la operación. Intentá nuevamente.";
+        }
+    }
+}

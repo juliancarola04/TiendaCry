@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TiendaCry.Backend.Data;
+using TiendaCry.Backend.Excepciones;
 using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Repositories;
 
@@ -96,6 +97,57 @@ namespace TiendaCry.Backend.Implementacion
                 _dataContext.ChangeTracker.Clear();
                 return false;
             }
+        }
+
+        public async Task<bool> ConfirmarCambioEmail(string codigo, DateTime ahora)
+        {
+            TokenEmail? token = await _dataContext.TokensEmail
+                .Include(t => t.Usuario)
+                .FirstOrDefaultAsync(t => t.Codigo == codigo
+                    && t.TipoTokenEmail.Nombre == "CambioEmail"
+                    && !t.Usado
+                    && t.FechaVencimiento > ahora
+                    && t.EmailNuevo != null
+                    && t.Usuario.EmailVerificado
+                    && !t.Usuario.DebeCambiarContrasena
+                    && t.Usuario.EstadoUsuario.Nombre == "Activo");
+
+            if (token is null || string.IsNullOrWhiteSpace(token.EmailNuevo))
+            {
+                return false;
+            }
+
+            string emailNuevo = token.EmailNuevo;
+
+            bool emailExistente = await _dataContext.Usuarios
+                .AnyAsync(u => u.Id != token.IdUsuario && u.Email == emailNuevo);
+
+            if (emailExistente)
+            {
+                throw new RecursoExistenteException("Ya existe una cuenta con ese correo.");
+            }
+
+            List<TokenEmail> anteriores = await _dataContext.TokensEmail
+                .Where(t => t.IdUsuario == token.IdUsuario
+                    && t.Id != token.Id
+                    && !t.Usado
+                    && t.FechaVencimiento > ahora
+                    && (t.TipoTokenEmail.Nombre == "CambioEmail"
+                        || t.TipoTokenEmail.Nombre == "RecuperacionContrasena"))
+                .ToListAsync();
+
+            token.Usuario.Email = emailNuevo;
+            token.Usuario.EmailVerificado = true;
+            token.Usado = true;
+
+            foreach (TokenEmail anterior in anteriores)
+            {
+                anterior.FechaVencimiento = ahora;
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return true;
         }
 
         public async Task GuardarAsync(TokenEmail token)

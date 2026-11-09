@@ -61,6 +61,33 @@ namespace TiendaCry.Backend.Implementacion
                 .ToListAsync();
         }
 
+        public async Task<List<Usuario>> ObtenerAdministradoresActivos()
+        {
+            return await _dataContext.Usuarios
+                .AsNoTracking()
+                .Where(u => u.EstadoUsuario.Nombre == "Activo"
+                    && u.EsAdministradorTiendaCry)
+                .OrderBy(u => u.Apellido)
+                .ThenBy(u => u.Nombre)
+                .ThenBy(u => u.Id)
+                .ToListAsync();
+        }
+
+        public async Task<Usuario?> BuscarAdministradorActivoParaBaja(int idAdministrador)
+        {
+            return await _dataContext.Usuarios
+                .FirstOrDefaultAsync(u => u.Id == idAdministrador
+                    && u.EsAdministradorTiendaCry
+                    && u.EstadoUsuario.Nombre == "Activo");
+        }
+
+        public async Task<int> ContarAdministradoresActivos()
+        {
+            return await _dataContext.Usuarios
+                .CountAsync(u => u.EsAdministradorTiendaCry
+                    && u.EstadoUsuario.Nombre == "Activo");
+        }
+
         public async Task<List<string>> ObtenerRoles(int idUsuario)
         {
             List<string> roles = new List<string>();
@@ -170,6 +197,38 @@ namespace TiendaCry.Backend.Implementacion
             return await _dataContext.Usuarios
                 .AnyAsync(u => u.Id == id
                     && u.EstadoUsuario.Nombre == "Activo");
+        }
+
+        public async Task<bool> CambiarContrasena(int idUsuario, string contrasena, DateTime ahora)
+        {
+            Usuario? usuario = await _dataContext.Usuarios
+                .FirstOrDefaultAsync(u => u.Id == idUsuario
+                    && u.EstadoUsuario.Nombre == "Activo"
+                    && u.EmailVerificado
+                    && !u.DebeCambiarContrasena);
+
+            if (usuario is null)
+            {
+                return false;
+            }
+
+            List<TokenEmail> tokens = await _dataContext.TokensEmail
+                .Where(t => t.IdUsuario == idUsuario
+                    && t.TipoTokenEmail.Nombre == "RecuperacionContrasena"
+                    && !t.Usado
+                    && t.FechaVencimiento > ahora)
+                .ToListAsync();
+
+            usuario.Contrasena = contrasena;
+
+            foreach (TokenEmail token in tokens)
+            {
+                token.FechaVencimiento = ahora;
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return true;
         }
 
         public async Task<Usuario?> BuscarPorId(int id)

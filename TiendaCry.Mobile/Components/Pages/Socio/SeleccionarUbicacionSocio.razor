@@ -1,0 +1,313 @@
+﻿@page "/socio/ubicacion"
+@attribute [Authorize(Roles = RolesUsuario.Socio)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Ciudad.Response
+@using TiendaCry.Shared.DTO.Provincia.Response
+@using TiendaCry.Shared.DTO.Socio.Request
+@using TiendaCry.Shared.DTO.Socio.Response
+@using TiendaCry.Shared.ViewModels.Socio
+@inject SocioService SocioService
+@inject ProvinciaService ProvinciaService
+@inject NavigationManager Navigation
+
+<PageTitle>Seleccionar ubicación</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Seleccioná tu ubicación</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!_datosCargados)
+        {
+            <MudButton OnClick="CargarDatos">Reintentar</MudButton>
+        }
+        else
+        {
+            <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando || _cargandoCiudades" OnEnterPressed="Guardar">
+                <MudStack Spacing="4">
+                    <MudAutocomplete T="int?"
+                                     Value="_modelo.IdProvincia"
+                                     ValueChanged="CambiarProvincia"
+                                     SearchFunc="BuscarProvincias"
+                                     ToStringFunc="MostrarProvincia"
+                                     Label="Provincia"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText="true"
+                                     Required="true"
+                                     RequiredError="Seleccioná una provincia." />
+
+                    <MudAutocomplete T="int?"
+                                     @key="_modelo.IdProvincia"
+                                     @bind-Value="_modelo.IdCiudad"
+                                     SearchFunc="BuscarCiudades"
+                                     ToStringFunc="MostrarCiudad"
+                                     Label="Ciudad"
+                                     Variant="Variant.Outlined"
+                                     Disabled="_modelo.IdProvincia is null || _cargandoCiudades"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText="true"
+                                     Required="true"
+                                     RequiredError="Seleccioná una ciudad." />
+
+                    @if (_cargandoCiudades)
+                    {
+                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                    }
+
+                    @if (_falloCargaCiudades)
+                    {
+                        <MudButton OnClick="() => CambiarProvincia(_modelo.IdProvincia)">
+                            Reintentar carga de ciudades
+                        </MudButton>
+                    }
+
+                    <MudButton OnClick="Guardar"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_procesando || _cargandoCiudades || _falloCargaCiudades">
+                        Guardar
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        }
+
+        <MudButton Href="@UrlVolver" Disabled="_procesando">Volver atrás</MudButton>
+    </MudStack>
+</MudContainer>
+
+<BarraSocio />
+
+@code {
+    [SupplyParameterFromQuery(Name = "filtrarAlVolver")]
+    public bool FiltrarAlVolver { get; set; }
+
+    private readonly UbicacionSocioViewModel _modelo = new UbicacionSocioViewModel();
+    private List<ProvinciaResponse> _provincias = new List<ProvinciaResponse>();
+    private List<CiudadResponse> _ciudades = new List<CiudadResponse>();
+    private MudForm _formulario = null!;
+    private bool _cargando = true;
+    private bool _datosCargados;
+    private bool _cargandoCiudades;
+    private bool _falloCargaCiudades;
+    private bool _procesando;
+    private string? _error;
+
+    private string UrlVolver
+    {
+        get
+        {
+            if (FiltrarAlVolver)
+            {
+                return "/socio/promociones";
+            }
+
+            return "/socio/cuenta";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _cargando = true;
+        _datosCargados = false;
+        _error = null;
+        _modelo.IdProvincia = null;
+        _modelo.IdCiudad = null;
+        _ciudades.Clear();
+
+        try
+        {
+            _provincias = await ProvinciaService.ObtenerProvincias();
+            UbicacionSocioResponse ubicacion = await SocioService.ObtenerUbicacion();
+
+            if (ubicacion.IdProvincia.HasValue)
+            {
+                await CambiarProvincia(ubicacion.IdProvincia);
+
+                if (_falloCargaCiudades)
+                {
+                    return;
+                }
+
+                _modelo.IdCiudad = ubicacion.IdCiudad;
+            }
+
+            _datosCargados = true;
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e, "No se pudo cargar tu ubicación.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private Task<IEnumerable<int?>> BuscarProvincias(string texto, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        List<int?> resultados = _provincias
+            .Where(p => string.IsNullOrWhiteSpace(texto) || p.Nombre.Contains(texto.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(p => (int?)p.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<int?>>(resultados);
+    }
+
+    private Task<IEnumerable<int?>> BuscarCiudades(string texto, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        List<int?> resultados = _ciudades
+            .Where(c => string.IsNullOrWhiteSpace(texto) || c.Nombre.Contains(texto.Trim(), StringComparison.OrdinalIgnoreCase))
+            .Select(c => (int?)c.Id)
+            .ToList();
+
+        return Task.FromResult<IEnumerable<int?>>(resultados);
+    }
+
+    private string MostrarProvincia(int? idProvincia)
+    {
+        return _provincias.FirstOrDefault(p => p.Id == idProvincia)?.Nombre ?? string.Empty;
+    }
+
+    private string MostrarCiudad(int? idCiudad)
+    {
+        return _ciudades.FirstOrDefault(c => c.Id == idCiudad)?.Nombre ?? string.Empty;
+    }
+
+    private async Task CambiarProvincia(int? idProvincia)
+    {
+        if (_cargandoCiudades || _procesando)
+        {
+            return;
+        }
+
+        _modelo.IdProvincia = idProvincia;
+        _modelo.IdCiudad = null;
+        _ciudades.Clear();
+        _error = null;
+        _falloCargaCiudades = false;
+
+        if (idProvincia is null)
+        {
+            return;
+        }
+
+        _cargandoCiudades = true;
+
+        try
+        {
+            _ciudades = await ProvinciaService.ObtenerCiudadesPorProvincia(idProvincia.Value);
+        }
+        catch (HttpRequestException e)
+        {
+            _falloCargaCiudades = true;
+            MostrarError(e, "No se pudieron cargar las ciudades.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _falloCargaCiudades = true;
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargandoCiudades = false;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_procesando || _cargando || _cargandoCiudades || !_datosCargados || _falloCargaCiudades)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            if (!_modelo.IdProvincia.HasValue || !_modelo.IdCiudad.HasValue
+                || !_provincias.Any(p => p.Id == _modelo.IdProvincia.Value)
+                || !_ciudades.Any(c => c.Id == _modelo.IdCiudad.Value))
+            {
+                _error = "Seleccioná una provincia y una ciudad válidas.";
+                return;
+            }
+
+            GuardarUbicacionRequest request = new GuardarUbicacionRequest(_modelo.IdProvincia.Value, _modelo.IdCiudad.Value);
+
+            await SocioService.GuardarUbicacion(request);
+
+            if (FiltrarAlVolver)
+            {
+                Navigation.NavigateTo("/socio/promociones?cerca=true", replace: true);
+            }
+            else
+            {
+                Navigation.NavigateTo("/socio/cuenta", replace: true);
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            MostrarError(e, "No se pudo guardar tu ubicación.");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private void MostrarError(HttpRequestException e, string mensaje)
+    {
+        if (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else if (e.StatusCode == HttpStatusCode.Forbidden)
+        {
+            _error = "No tenés permiso para acceder como socio.";
+        }
+        else if (e.StatusCode is null)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        else
+        {
+            _error = mensaje;
+        }
+    }
+}

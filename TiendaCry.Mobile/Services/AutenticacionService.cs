@@ -4,6 +4,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TiendaCry.Shared.DTO.Auth.Request;
 using TiendaCry.Shared.DTO.Auth.Response;
+using TiendaCry.Shared.DTO.Perfil.Request;
+using TiendaCry.Shared.DTO.Perfil.Response;
 
 namespace TiendaCry.Mobile.Services;
 
@@ -48,6 +50,52 @@ public class AutenticacionService
         }
 
         return sesion?.Token;
+    }
+
+    public async Task<PerfilResponse> ObtenerPerfil()
+    {
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/perfil"));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        PerfilResponse? perfil = await respuesta.Content.ReadFromJsonAsync<PerfilResponse>();
+
+        if (perfil is null)
+        {
+            throw new InvalidOperationException("No se pudo obtener el perfil.");
+        }
+
+        return perfil;
+    }
+
+    public async Task CambiarContrasena(CambiarContrasenaRequest request)
+    {
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, "api/perfil/contrasena")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
+
+        await ValidarRespuesta(respuesta, "No se pudo cambiar la contraseña.");
+    }
+
+    public async Task SolicitarCambioEmail(ModificarEmailRequest request)
+    {
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Post, "api/perfil/solicitar-cambio-email")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
+
+        await ValidarRespuesta(respuesta, "No se pudo enviar el correo de confirmación.");
     }
 
     public async Task EnviarVerificacionEmail()

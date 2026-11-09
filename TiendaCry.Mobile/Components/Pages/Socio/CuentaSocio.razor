@@ -1,0 +1,107 @@
+﻿@page "/socio/cuenta"
+@attribute [Authorize(Roles = RolesUsuario.Socio)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Perfil.Response
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalles de la cuenta</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="5">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+            Detalles de la cuenta
+        </MudText>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarPerfil">Reintentar</MudButton>
+        }
+        else if (_perfil is not null)
+        {
+            <MudTextField T="string"
+                          Value="@_perfil.Email"
+                          Label="Correo actual"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined" />
+
+            <MudButton Href="@($"{UrlCuenta}/cambiar-correo")"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true">
+                Cambiar correo
+            </MudButton>
+
+            <MudButton Href="/socio/ubicacion"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true">
+                Seleccionar ubicación
+            </MudButton>
+
+            <MudButton Href="@($"{UrlCuenta}/cambiar-contrasena")"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true">
+                Cambiar contraseña
+            </MudButton>
+        }
+
+        <MudButton Href="@UrlVolver">Volver atrás</MudButton>
+    </MudStack>
+</MudContainer>
+
+<BarraSocio />
+
+@code {
+    private PerfilResponse? _perfil;
+    private bool _cargando = true;
+    private string? _error;
+
+    private string UrlCuenta => "/socio/cuenta";
+
+    private string UrlVolver => "/socio/promociones";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPerfil();
+    }
+
+    private async Task CargarPerfil()
+    {
+        _cargando = true;
+        _error = null;
+        _perfil = null;
+
+        try
+        {
+            _perfil = await AutenticacionService.ObtenerPerfil();
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo obtener el perfil.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

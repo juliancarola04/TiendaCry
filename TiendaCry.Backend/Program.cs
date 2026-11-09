@@ -38,6 +38,9 @@ namespace TiendaCry.Backend
             builder.Services.AddScoped<SesionService>();
             builder.Services.AddScoped<RegisterService>();
             builder.Services.AddScoped<UsuarioService>();
+            builder.Services.AddScoped<PerfilService>();
+            builder.Services.AddScoped<ISocioRepository, SocioRepositoryPsqlEF>();
+            builder.Services.AddScoped<SocioService>();
             builder.Services.AddScoped<ITiendaRepository, TiendaRepositoryPsqlEF>();
             builder.Services.AddScoped<IEmpleadoRepository, EmpleadoRepositoryPsqlEF>();
             builder.Services.AddScoped<EmpleadoService>();

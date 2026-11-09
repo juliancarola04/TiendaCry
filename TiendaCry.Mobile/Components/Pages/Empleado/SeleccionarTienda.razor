@@ -9,7 +9,7 @@
 
 <PageTitle>Seleccionar tienda</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
     <MudStack Spacing="4">
         <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
             Seleccioná una de las tiendas
@@ -50,6 +50,8 @@
         <MudButton Href="/">Volver al inicio</MudButton>
     </MudStack>
 </MudContainer>
+
+<BarraEmpleado />
 
 @code {
     private List<TiendaActivaResponse> _tiendas = new List<TiendaActivaResponse>();

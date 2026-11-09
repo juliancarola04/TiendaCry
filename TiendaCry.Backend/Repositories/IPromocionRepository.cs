@@ -5,6 +5,8 @@ namespace TiendaCry.Backend.Repositories;
 public interface IPromocionRepository
 {
     Task<List<Promocion>> ObtenerPorTienda(int idTienda);
+    Task<List<Promocion>> ObtenerActivasParaSocio(int? idProvincia, int? idCiudad, DateTime ahora);
+    Task<Promocion?> ObtenerDetalleActivoParaSocio(int idPromocion, DateTime ahora);
     Task<List<Promocion>> ObtenerVigentes(int idTienda, DateTime ahora);
     Task<Promocion?> BuscarVigente(int idTienda, int idPromocion, DateTime ahora);
     Task<List<Promocion>> ObtenerAprobadas(int idTienda, DateTime ahora);

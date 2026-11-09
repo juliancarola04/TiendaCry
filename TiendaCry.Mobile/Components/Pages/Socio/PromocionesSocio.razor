@@ -1,0 +1,145 @@
+﻿@page "/socio/promociones"
+@attribute [Authorize(Roles = RolesUsuario.Socio)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Socio.Response
+@inject SocioService SocioService
+@inject NavigationManager Navigation
+
+<PageTitle>Promociones</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="4">
+        <MudCheckBox T="bool"
+                     Value="Cerca"
+                     ValueChanged="CambiarFiltro"
+                     Label="Filtrar promociones cerca mío"
+                     Disabled="_cargando" />
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarPromociones">Reintentar</MudButton>
+        }
+        else if (_promociones.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No hay promociones activas para mostrar.</MudAlert>
+        }
+        else
+        {
+            @foreach (PromocionSocioResponse promocion in _promociones)
+            {
+                <MudLink Href="@ObtenerUrlDetalle(promocion.Id)" Underline="Underline.None">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">@promocion.Titulo</MudText>
+
+                        @if (!string.IsNullOrWhiteSpace(promocion.UrlImagen))
+                        {
+                            <MudImage Src="@promocion.UrlImagen"
+                                      Alt="@promocion.Titulo"
+                                      Fluid="true"
+                                      ObjectFit="ObjectFit.Contain" />
+                        }
+                        else
+                        {
+                            <MudText>Sin imagen</MudText>
+                        }
+                    </MudStack>
+                </MudLink>
+            }
+        }
+    </MudStack>
+</MudContainer>
+
+<BarraSocio />
+
+@code {
+    [SupplyParameterFromQuery(Name = "cerca")]
+    public bool Cerca { get; set; }
+
+    private List<PromocionSocioResponse> _promociones = new List<PromocionSocioResponse>();
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPromociones();
+    }
+
+    private void CambiarFiltro(bool activar)
+    {
+        if (activar)
+        {
+            Navigation.NavigateTo("/socio/promociones?cerca=true");
+        }
+        else
+        {
+            Navigation.NavigateTo("/socio/promociones");
+        }
+    }
+
+    private async Task CargarPromociones()
+    {
+        _cargando = true;
+        _error = null;
+        _promociones.Clear();
+
+        try
+        {
+            if (Cerca)
+            {
+                UbicacionSocioResponse ubicacion = await SocioService.ObtenerUbicacion();
+
+                if (!ubicacion.IdCiudad.HasValue || !ubicacion.IdProvincia.HasValue)
+                {
+                    Navigation.NavigateTo("/socio/ubicacion?filtrarAlVolver=true", replace: true);
+                    return;
+                }
+            }
+
+            _promociones = await SocioService.ObtenerPromociones(Cerca);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else if (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tenés permiso para acceder como socio.";
+            }
+            else if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudieron obtener las promociones.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private string ObtenerUrlDetalle(int idPromocion)
+    {
+        if (Cerca)
+        {
+            return $"/socio/promociones/{idPromocion}?cerca=true";
+        }
+
+        return $"/socio/promociones/{idPromocion}";
+    }
+}

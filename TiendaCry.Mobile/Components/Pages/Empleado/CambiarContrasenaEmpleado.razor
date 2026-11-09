@@ -1,0 +1,129 @@
+﻿@page "/empleado/cuenta/cambiar-contrasena"
+@page "/empleado/tiendas/{IdTienda:int}/cuenta/cambiar-contrasena"
+@attribute [Authorize(Roles = RolesUsuario.EmpleadoTienda)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Perfil.Request
+@using TiendaCry.Shared.ViewModels.Perfil
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+<PageTitle>Cambiar contraseña</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Cambiar contraseña</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        <MudForm @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Guardar">
+            <MudStack Spacing="4">
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Contrasena"
+                              Label="Nueva contraseña"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá la nueva contraseña." />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.ConfirmacionContrasena"
+                              Label="Confirmar contraseña"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Repetí la nueva contraseña." />
+
+                <MudButton OnClick="Guardar"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_procesando">
+                    Guardar
+                </MudButton>
+            </MudStack>
+        </MudForm>
+
+        <MudButton Href="@UrlCuenta" Disabled="_procesando">Volver atrás</MudButton>
+    </MudStack>
+</MudContainer>
+
+<BarraEmpleado IdTienda="@IdTienda" />
+
+@code {
+    [Parameter]
+    public int? IdTienda { get; set; }
+
+    private readonly CambiarContrasenaViewModel _modelo = new CambiarContrasenaViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private string? _error;
+
+    private string UrlCuenta
+    {
+        get
+        {
+            if (IdTienda.HasValue)
+            {
+                return $"/empleado/tiendas/{IdTienda}/cuenta";
+            }
+
+            return "/empleado/cuenta";
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            if (_modelo.Contrasena != _modelo.ConfirmacionContrasena)
+            {
+                _error = "Las contraseñas no coinciden.";
+                return;
+            }
+
+            CambiarContrasenaRequest request = new CambiarContrasenaRequest(_modelo.Contrasena, _modelo.ConfirmacionContrasena);
+
+            await AutenticacionService.CambiarContrasena(request);
+
+            Navigation.NavigateTo(UrlCuenta);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo cambiar la contraseña.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

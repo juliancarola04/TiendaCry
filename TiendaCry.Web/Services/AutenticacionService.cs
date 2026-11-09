@@ -221,6 +221,15 @@ public class AutenticacionService
         await ValidarRespuesta(respuesta, "No se pudo confirmar el correo.");
     }
 
+    public async Task ConfirmarCambioEmail(string token)
+    {
+        ConfirmarEmailRequest request = new ConfirmarEmailRequest(token);
+
+        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/perfil/confirmar-cambio-email", request);
+
+        await ValidarRespuesta(respuesta, "No se pudo confirmar el cambio de correo.");
+    }
+
     public async Task RestablecerContrasena(RestablecerContrasenaRequest request)
     {
         using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/restablecer-contrasena", request);

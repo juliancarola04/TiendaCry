@@ -3,6 +3,7 @@ using TiendaCry.Backend.Repositories;
 using TiendaCry.Backend.Models;
 using TiendaCry.Backend.Utilidades;
 using TiendaCry.Shared.DTO.Auth.Request;
+using TiendaCry.Shared.DTO.Administrador.Request;
 using TiendaCry.Shared.DTO.Usuario.Request;
 using TiendaCry.Shared.DTO.Usuario.Response;
 
@@ -96,6 +97,77 @@ namespace TiendaCry.Backend.Services
             _logger.LogInformation("El administrador {IdAdministrador} creó la cuenta del usuario {IdUsuario}.", idAdministrador, usuario.Id);
         }
 
+        public async Task<List<UsuarioListadoResponse>> ObtenerAdministradoresActivos(int idAdministrador)
+        {
+            await ValidarAdministrador(idAdministrador);
+
+            List<Usuario> usuarios = await _usuarioRepository.ObtenerAdministradoresActivos();
+
+            return usuarios.Select(u => new UsuarioListadoResponse(u.Id, u.Nombre, u.Apellido, u.Email)).ToList();
+        }
+
+        public async Task CrearAdministrador(int idAdministrador, CrearAdministradorRequest request)
+        {
+            await ValidarAdministrador(idAdministrador);
+
+            if (!Validaciones.EstanDatosBien(request.Usuario, request.Email, request.Contrasena, request.Nombre, request.Apellido))
+            {
+                throw new DatosLlegaronErradosException("Completá todos los campos.");
+            }
+
+            string username = request.Usuario.Trim();
+            string email = request.Email.Trim();
+            string nombre = request.Nombre.Trim();
+            string apellido = request.Apellido.Trim();
+
+            if (!Validaciones.CumpleLongitudMaxima(username, 30)
+                || !Validaciones.CumpleLongitudMaxima(email, 254)
+                || !Validaciones.CumpleLongitudMaxima(nombre, 35)
+                || !Validaciones.CumpleLongitudMaxima(apellido, 35))
+            {
+                throw new DatosLlegaronErradosException("Alguno de los campos supera la longitud permitida.");
+            }
+
+            if (!Validaciones.EsUnEmailValido(email))
+            {
+                throw new DatosLlegaronErradosException("El correo ingresado no es válido.");
+            }
+
+            if (await _usuarioRepository.ExistePorUsername(username))
+            {
+                throw new RecursoExistenteException("Ya existe alguien con ese usuario.");
+            }
+
+            if (await _usuarioRepository.ExistePorEmail(email))
+            {
+                throw new RecursoExistenteException("Ya existe una cuenta con ese correo.");
+            }
+
+            int? idEstadoActivo = await _registerRepository.ObtenerIdEstadoActivo();
+
+            if (idEstadoActivo is null)
+            {
+                throw new InvalidOperationException("No está configurado el estado Activo de usuario.");
+            }
+
+            Usuario usuario = new Usuario
+            {
+                NomUsuario = username,
+                Email = email,
+                Contrasena = BCrypt.Net.BCrypt.EnhancedHashPassword(request.Contrasena),
+                Nombre = nombre,
+                Apellido = apellido,
+                IdEstadoUsuario = idEstadoActivo.Value,
+                EmailVerificado = false,
+                DebeCambiarContrasena = false,
+                EsAdministradorTiendaCry = true
+            };
+
+            await _registerRepository.Registrarse(usuario);
+
+            _logger.LogInformation("El administrador {IdAdministrador} creó la cuenta del administrador {IdNuevoAdministrador}.", idAdministrador, usuario.Id);
+        }
+
         public async Task<bool> DarDeBaja(int idUsuario, int idAdministrador)
         {
             await ValidarAdministrador(idAdministrador);
@@ -174,6 +246,53 @@ namespace TiendaCry.Backend.Services
             await _usuarioRepository.GuardarCambios();
 
             _logger.LogInformation("El administrador {IdAdministrador} dio de baja al usuario {IdUsuario}, sus vinculaciones y {CantidadTiendas} tiendas administradas. Se revocaron {CantidadSesiones} sesiones.", idAdministrador, idUsuario, tiendas.Count, sesiones.Count);
+
+            return true;
+        }
+
+        public async Task<bool> DarDeBajaAdministrador(int idAdministrador, int idAdministradorActual)
+        {
+            await ValidarAdministrador(idAdministradorActual);
+
+            if (idAdministrador == idAdministradorActual)
+            {
+                throw new SinPermisoException("No podés dar de baja tu propia cuenta desde esta sección.");
+            }
+
+            Usuario? administrador = await _usuarioRepository.BuscarAdministradorActivoParaBaja(idAdministrador);
+
+            if (administrador is null)
+            {
+                return false;
+            }
+
+            int cantidadAdministradores = await _usuarioRepository.ContarAdministradoresActivos();
+
+            if (cantidadAdministradores <= 1)
+            {
+                throw new DatosLlegaronErradosException("No se puede dar de baja al último administrador activo.");
+            }
+
+            int? idEstadoBaja = await _usuarioRepository.ObtenerIdEstadoBaja();
+
+            if (idEstadoBaja is null)
+            {
+                throw new InvalidOperationException("No está configurado el estado Baja de usuario.");
+            }
+
+            List<SesionUsuario> sesiones = await _sesionRepository.ObtenerSesionesSinRevocar(idAdministrador);
+            DateTime ahora = DateTime.UtcNow;
+
+            administrador.IdEstadoUsuario = idEstadoBaja.Value;
+
+            foreach (SesionUsuario sesion in sesiones)
+            {
+                sesion.FechaRevocacion = ahora;
+            }
+
+            await _usuarioRepository.GuardarCambios();
+
+            _logger.LogInformation("El administrador {IdAdministradorActual} dio de baja al administrador {IdAdministrador}. Se revocaron {CantidadSesiones} sesiones.", idAdministradorActual, idAdministrador, sesiones.Count);
 
             return true;
         }

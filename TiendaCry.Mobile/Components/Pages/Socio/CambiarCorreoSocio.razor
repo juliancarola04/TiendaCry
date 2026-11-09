@@ -1,0 +1,135 @@
+﻿@page "/socio/cuenta/cambiar-correo"
+@attribute [Authorize(Roles = RolesUsuario.Socio)]
+@layout MainLayout
+@using System.Net
+@using TiendaCry.Mobile.Services
+@using TiendaCry.Shared.DTO.Auth.Request
+@using TiendaCry.Shared.ViewModels.Auth
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+<PageTitle>Cambiar correo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">Cambiar correo</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_correoEnviado)
+        {
+            <MudAlert Severity="Severity.Success">
+                Enviamos un link a @_modelo.Email. Confirmalo para completar el cambio.
+                Tu correo actual se conservará hasta entonces.
+            </MudAlert>
+
+            <MudButton OnClick="Enviar" Disabled="_procesando" Color="Color.Primary">
+                Reenviar
+            </MudButton>
+
+            <MudButton OnClick="EditarCorreo" Disabled="_procesando">
+                Modificar correo
+            </MudButton>
+
+            <MudButton Href="@UrlCuenta" Color="Color.Primary">
+                Ya confirmé mi nuevo correo
+            </MudButton>
+        }
+        else
+        {
+            <MudText Align="Align.Center">Ingresá el nuevo e-mail</MudText>
+
+            <MudForm @key="_correoEnviado" @ref="_formulario" Model="_modelo" Disabled="_procesando" OnEnterPressed="Enviar">
+                <MudStack Spacing="4">
+                    <MudTextField T="string"
+                                  @bind-Value="_modelo.Email"
+                                  Label="E-mail"
+                                  InputType="InputType.Email"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="254"
+                                  Required="true"
+                                  RequiredError="Ingresá el nuevo correo." />
+
+                    <MudButton OnClick="Enviar"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_procesando">
+                        Enviar
+                    </MudButton>
+                </MudStack>
+            </MudForm>
+        }
+
+        <MudButton Href="@UrlCuenta" Disabled="_procesando">Volver atrás</MudButton>
+    </MudStack>
+</MudContainer>
+
+<BarraSocio />
+
+@code {
+    private readonly ModificarEmailViewModel _modelo = new ModificarEmailViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private bool _correoEnviado;
+    private string? _error;
+
+    private string UrlCuenta => "/socio/cuenta";
+
+    private void EditarCorreo()
+    {
+        _correoEnviado = false;
+        _error = null;
+    }
+
+    private async Task Enviar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            if (!_correoEnviado)
+            {
+                await _formulario.ValidateAsync();
+
+                if (!_formulario.IsValid)
+                {
+                    return;
+                }
+            }
+
+            ModificarEmailRequest request = new ModificarEmailRequest(_modelo.Email);
+
+            await AutenticacionService.SolicitarCambioEmail(request);
+
+            _correoEnviado = true;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo enviar el correo de confirmación.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

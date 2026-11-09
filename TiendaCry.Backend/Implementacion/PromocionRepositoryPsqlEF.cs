@@ -14,6 +14,37 @@ public class PromocionRepositoryPsqlEF : IPromocionRepository
         _dataContext = dataContext;
     }
 
+    public async Task<List<Promocion>> ObtenerActivasParaSocio(int? idProvincia, int? idCiudad, DateTime ahora)
+    {
+        return await _dataContext.Promociones
+            .AsNoTracking()
+            .Include(p => p.Imagen)
+            .Where(p => p.EstadoPromocion.Nombre == "Aprobada"
+                && p.Tienda.EstadoTienda.Nombre == "Aprobada"
+                && p.FechaInicio <= ahora
+                && p.FechaFin > ahora
+                && (!idProvincia.HasValue || p.Tienda.Ciudad.ProvinciaId == idProvincia.Value))
+            .OrderByDescending(p => idCiudad.HasValue && p.Tienda.IdCiudad == idCiudad.Value)
+            .ThenBy(p => p.Titulo)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+    }
+
+    public async Task<Promocion?> ObtenerDetalleActivoParaSocio(int idPromocion, DateTime ahora)
+    {
+        return await _dataContext.Promociones
+            .AsNoTracking()
+            .Include(p => p.Imagen)
+            .Include(p => p.Tienda)
+                .ThenInclude(t => t.Ciudad)
+                    .ThenInclude(c => c.Provincia)
+            .FirstOrDefaultAsync(p => p.Id == idPromocion
+                && p.EstadoPromocion.Nombre == "Aprobada"
+                && p.Tienda.EstadoTienda.Nombre == "Aprobada"
+                && p.FechaInicio <= ahora
+                && p.FechaFin > ahora);
+    }
+
     public async Task<Promocion?> BuscarVigente(int idTienda, int idPromocion, DateTime ahora)
     {
         return await _dataContext.Promociones

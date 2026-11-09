@@ -13,12 +13,25 @@
     @if (_confirmado)
     {
         <MudAlert Severity="Severity.Success">
-            Tu correo fue verificado correctamente.
+            @if (Tipo == "cambio-email")
+            {
+                <text>Tu correo se actualizó correctamente.</text>
+            }
+            else
+            {
+                <text>Tu correo fue verificado correctamente.</text>
+            }
         </MudAlert>
 
         <MudText Align="Align.Center">
-            Podés volver a la pestaña anterior y presionar
-            “Ya verifiqué mi correo”, o iniciar sesión.
+            @if (Tipo == "cambio-email")
+            {
+                <text>Podés volver a la aplicación y consultar tu cuenta para ver el nuevo correo.</text>
+            }
+            else
+            {
+                <text>Podés volver a la pestaña anterior y presionar “Ya verifiqué mi correo”, o iniciar sesión.</text>
+            }
         </MudText>
     }
     else if (string.IsNullOrWhiteSpace(Token))
@@ -58,6 +71,9 @@
     [SupplyParameterFromQuery(Name = "token")]
     public string? Token { get; set; }
 
+    [SupplyParameterFromQuery(Name = "tipo")]
+    public string? Tipo { get; set; }
+
     private bool _procesando;
     private bool _confirmado;
     private string? _error;
@@ -74,7 +90,14 @@
 
         try
         {
-            await AutenticacionService.ConfirmarEmail(Token);
+            if (Tipo == "cambio-email")
+            {
+                await AutenticacionService.ConfirmarCambioEmail(Token);
+            }
+            else
+            {
+                await AutenticacionService.ConfirmarEmail(Token);
+            }
 
             _confirmado = true;
         }

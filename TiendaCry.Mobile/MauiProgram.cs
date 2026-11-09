@@ -49,6 +49,8 @@ public static class MauiProgram
 		});
 		builder.Services.AddScoped<AutenticacionService>();
 		builder.Services.AddScoped<EmpleadoTiendaService>();
+		builder.Services.AddScoped<SocioService>();
+		builder.Services.AddScoped<ProvinciaService>();
 		builder.Services.AddAuthorizationCore();
 		builder.Services.AddCascadingAuthenticationState();
 		builder.Services.AddScoped<AuthenticationStateProvider, EstadoAutenticacionProvider>();

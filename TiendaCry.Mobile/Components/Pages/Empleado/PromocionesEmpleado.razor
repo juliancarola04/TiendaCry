@@ -9,7 +9,7 @@
 
 <PageTitle>Promociones de la tienda</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6 pb-16">
     <MudStack Spacing="4">
         @if (_cargando)
         {
@@ -58,9 +58,10 @@
             }
         }
 
-        <MudButton Href="/">Salir del modo empleado</MudButton>
     </MudStack>
 </MudContainer>
+
+<BarraEmpleado IdTienda="@IdTienda" />
 
 @code {
     [Parameter]

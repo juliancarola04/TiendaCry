@@ -1,0 +1,104 @@
+﻿@using System.Net
+@using TiendaCry.Mobile.Services
+@inject AuthenticationStateProvider EstadoAutenticacion
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+
+<MudAppBar Bottom="true" Fixed="true" Dense="true" Elevation="1">
+    <MudIconButton OnClick="Salir"
+                   Icon="@Icons.Material.Filled.ExitToApp"
+                   Color="Color.Inherit"
+                   Disabled="_procesando"
+                   aria-label="Salir del modo socio" />
+
+    <MudSpacer />
+
+    <MudIconButton Href="/socio/cuenta"
+                   Icon="@Icons.Material.Filled.Person"
+                   Color="Color.Inherit"
+                   Disabled="_procesando"
+                   aria-label="Detalles de la cuenta" />
+
+    <MudSpacer />
+
+    <MudIconButton Icon="@Icons.Material.Filled.QrCode2"
+                   Color="Color.Inherit"
+                   Disabled="true"
+                   aria-label="Código QR" />
+
+    <MudSpacer />
+
+    <MudIconButton Icon="@Icons.Material.Filled.LocalOffer"
+                   Color="Color.Inherit"
+                   Disabled="true"
+                   aria-label="Cupones" />
+
+    <MudSpacer />
+
+    <MudIconButton Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                   Color="Color.Inherit"
+                   Disabled="true"
+                   aria-label="Membresía" />
+</MudAppBar>
+
+@code {
+    private bool _procesando;
+    private string? _error;
+
+    private async Task Salir()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            AuthenticationState estado = await EstadoAutenticacion.GetAuthenticationStateAsync();
+
+            if (estado.User.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            if (estado.User.IsInRole(RolesUsuario.EmpleadoTienda))
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                await AutenticacionService.CerrarSesion();
+
+                Navigation.NavigateTo("/login");
+            }
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo salir. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

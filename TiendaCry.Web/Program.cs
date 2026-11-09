@@ -25,6 +25,7 @@ builder.Services.AddScoped<TiendaService>();
 builder.Services.AddScoped<PromocionService>();
 builder.Services.AddScoped<EmpleadoService>();
 builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<AdministradorService>();
 builder.Services.AddScoped<ProvinciaService>();
 builder.Services.AddScoped<CategoriaService>();
 

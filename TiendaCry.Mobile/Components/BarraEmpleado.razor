@@ -1,0 +1,31 @@
+﻿<MudAppBar Bottom="true" Fixed="true" Dense="true" Elevation="1">
+    <MudIconButton Href="/"
+                   Icon="@Icons.Material.Filled.ExitToApp"
+                   Color="Color.Inherit"
+                   aria-label="Salir del modo empleado" />
+
+    <MudSpacer />
+
+    <MudIconButton Href="@UrlCuenta"
+                   Icon="@Icons.Material.Filled.Person"
+                   Color="Color.Inherit"
+                   aria-label="Detalles de la cuenta" />
+</MudAppBar>
+
+@code {
+    [Parameter]
+    public int? IdTienda { get; set; }
+
+    private string UrlCuenta
+    {
+        get
+        {
+            if (IdTienda.HasValue)
+            {
+                return $"/empleado/tiendas/{IdTienda}/cuenta";
+            }
+
+            return "/empleado/cuenta";
+        }
+    }
+}
