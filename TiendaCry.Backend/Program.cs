@@ -85,28 +85,6 @@ namespace TiendaCry.Backend
                         RoleClaimType = ClaimTypes.Role,
                         ClockSkew = TimeSpan.Zero
                     };
-
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnTokenValidated = async context =>
-                        {
-                            var sub = context.Principal?
-                                .FindFirst("sub")?.Value;
-
-                            int idUsuario = Convert.ToInt32(sub);
-
-                            var usuarioRepository = context.HttpContext
-                                .RequestServices
-                                .GetRequiredService<IUsuarioRepository>();
-
-                            // Reocrdar que esto lo puse porque quizá el usuario se da de baja y tenemos que evitar que pueda seguir haciendo cosas.
-                            // Este evento se va a validar desp de que el backend haga las validaciones estándar sobre el token.
-                            if (!await usuarioRepository.EstaActivo(idUsuario))
-                            {
-                                context.Fail("La cuenta no está habilitada.");
-                            }
-                        }
-                    };
                 });
 
             // Add services to the container.
